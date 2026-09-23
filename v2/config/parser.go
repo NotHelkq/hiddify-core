@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/hiddify/ray2sing/ray2sing"
 	"github.com/sagernet/sing-box/experimental/libbox"

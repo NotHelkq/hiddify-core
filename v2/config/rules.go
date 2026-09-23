@@ -62,7 +62,7 @@ func (r *Rule) MakeRule() (option.Rule, bool) {
 		case Protocol_dns:
 			raw.Protocol = append(raw.Protocol, C.ProtocolDNS)
 		case Protocol_bittorrent:
-			raw.Protocol = append(raw.Protocol, C.ProtocolBittorrent)
+			raw.Protocol = append(raw.Protocol, C.ProtocolBitTorrent)
 		}
 	}
 

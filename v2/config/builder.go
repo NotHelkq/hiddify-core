@@ -685,8 +685,8 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 		)
 	}
 
-	if hopts.RouteRule != nil {
-		for _, r := range hopts.RouteRule.Rules {
+	if hopt.RouteRule != nil {
+		for _, r := range hopt.RouteRule.Rules {
 			if r == nil || !r.Enabled {
 				continue
 			}
