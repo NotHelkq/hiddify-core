@@ -8,7 +8,8 @@
 .build
 .idea
 cert
-data
+/data
+!olcrtc/**/data/**
 **/*.log
 .DS_Store
 
