@@ -685,45 +685,19 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 		)
 	}
 
-	// for _, rule := range opt.Rules {
-	// 	routeRule := rule.MakeRule()
-	// 	switch rule.Outbound {
-	// 	case "bypass":
-	// 		routeRule.Outbound = OutboundBypassTag
-	// 	case "block":
-	// 		routeRule.Outbound = OutboundBlockTag
-	// 	case "proxy":
-	// 		routeRule.Outbound = OutboundMainProxyTag
-	// 	}
-
-	// 	if routeRule.IsValid() {
-	// 		routeRules = append(
-	// 			routeRules,
-	// 			option.Rule{
-	// 				Type:           C.RuleTypeDefault,
-	// 				DefaultOptions: routeRule,
-	// 			},
-	// 		)
-	// 	}
-
-	// 	dnsRule := rule.MakeDNSRule()
-	// 	switch rule.Outbound {
-	// 	case "bypass":
-	// 		dnsRule.Server = DNSDirectTag
-	// 	case "block":
-	// 		dnsRule.Server = DNSBlockTag
-	// 		dnsRule.DisableCache = true
-	// 	case "proxy":
-	// 		if opt.EnableFakeDNS {
-	// 			fakeDnsRule := dnsRule
-	// 			fakeDnsRule.Server = DNSFakeTag
-	// 			fakeDnsRule.Inbound = []string{InboundTUNTag, InboundMixedTag}
-	// 			dnsRules = append(dnsRules, fakeDnsRule)
-	// 		}
-	// 		dnsRule.Server = DNSRemoteTag
-	// 	}
-	// 	dnsRules = append(dnsRules, dnsRule)
-	// }
+	if hopts.RouteRule != nil {
+		for _, r := range hopts.RouteRule.Rules {
+			if r == nil || !r.Enabled {
+				continue
+			}
+			if dnsRule, ok := r.MakeDNSRule(); ok {
+				dnsRules = append(dnsRules, dnsRule)
+			}
+			if routeRule, ok := r.MakeRule(); ok {
+				routeRules = append(routeRules, routeRule)
+			}
+		}
+	}
 	forceDirectRoute := make([]string, 0)
 	if options.NTP != nil && options.NTP.Enabled {
 		forceDirectRoute = append(forceDirectRoute, options.NTP.Server)

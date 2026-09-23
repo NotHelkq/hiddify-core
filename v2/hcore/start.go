@@ -11,6 +11,7 @@ import (
 	"github.com/hiddify/hiddify-core/v2/db"
 	hcommon "github.com/hiddify/hiddify-core/v2/hcommon"
 	service_manager "github.com/hiddify/hiddify-core/v2/service_manager"
+	olcrtc "github.com/openlibrecommunity/olcrtc/mobile"
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/experimental/libbox"
@@ -112,6 +113,31 @@ func StartService(ctx context.Context, in *StartRequest) (coreResponse *CoreInfo
 		return errorWrapper(MessageType_ERROR_BUILDING_CONFIG, err)
 	}
 	saveLastStartRequest(in)
+
+	if olcrtcOpt := config.DetectOLCRTCOptions(in.ConfigContent, in.ConfigPath); olcrtcOpt != nil {
+		if olcrtc.IsRunning() {
+			olcrtc.Stop()
+		}
+		if olcrtcOpt.DNSServer != "" {
+			olcrtc.SetDNS(olcrtcOpt.DNSServer)
+		}
+		if olcrtcOpt.AuthToken != "" {
+			olcrtc.SetWBToken(olcrtcOpt.AuthToken)
+		}
+		if olcrtcOpt.VP8FPS > 0 {
+			olcrtc.SetVP8Options(olcrtcOpt.VP8FPS, olcrtcOpt.VP8BatchSize)
+		}
+		socksPort := olcrtcOpt.SocksPort
+		if socksPort <= 0 {
+			socksPort = 10808
+		}
+		Log(LogLevel_INFO, LogType_CORE, fmt.Sprintf("Starting olcRTC: carrier=%s, transport=%s, room=%s, port=%d", olcrtcOpt.Provider, olcrtcOpt.Transport, olcrtcOpt.RoomID, socksPort))
+		err := olcrtc.StartWithTransport(olcrtcOpt.Provider, olcrtcOpt.Transport, olcrtcOpt.RoomID, olcrtcOpt.ClientID, olcrtcOpt.KeyHex, socksPort, "", "")
+		if err != nil {
+			return errorWrapper(MessageType_START_SERVICE, fmt.Errorf("failed to start olcrtc: %w", err))
+		}
+		_ = olcrtc.WaitReady(5000)
+	}
 
 	Log(LogLevel_DEBUG, LogType_CORE, "Main Service pre start")
 	if err := service_manager.OnMainServicePreStart(options); err != nil {

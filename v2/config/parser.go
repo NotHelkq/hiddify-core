@@ -106,6 +106,16 @@ func parseConfigContent(ctx context.Context, content []byte, debug bool, configO
 		return patchConfigStr(ctx, output, "ClashParser", configOpt)
 	}
 
+	strContent := strings.TrimSpace(string(content))
+	if strings.HasPrefix(strContent, "olcrtc://") {
+		olcrtcOpt, err := ParseOLCRTCURI(strContent)
+		if err == nil {
+			ActiveOLCRTCOptions = olcrtcOpt
+			return patchConfigStr(ctx, olcrtcOpt.ToSingboxJSON(), "OLCRTCParser", configOpt)
+		}
+		return nil, fmt.Errorf("olcrtc parser error: %w", err)
+	}
+
 	v2ray, err := ray2sing.Ray2SingboxOptions(ctx, string(content), configOpt.UseXrayCoreWhenPossible)
 	if err == nil {
 		return patchConfigOptions(ctx, v2ray, "V2rayParser", configOpt)

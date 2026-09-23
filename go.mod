@@ -8,6 +8,7 @@ require (
 	github.com/jellydator/validation v1.1.0
 	github.com/kardianos/service v1.2.2
 	github.com/miekg/dns v1.1.72
+	github.com/openlibrecommunity/olcrtc v0.0.0
 	github.com/sagernet/gomobile v0.1.12
 	github.com/sagernet/sing v0.8.11-0.20260514110501-905ad103a4df
 	github.com/sagernet/sing-dns v0.3.0
@@ -310,3 +311,5 @@ replace github.com/Psiphon-Labs/psiphon-tls => ./hiddify-sing-box/replace/psipho
 replace github.com/net2share/vaydns => github.com/hiddify/vaydns v0.0.0-20260401180616-890dc987a6a9
 
 replace github.com/kianmhz/GooseRelayVPN => github.com/hiddify/GooseRelayVPN v0.0.0-20260429125124-0e68c2a3ae4c
+
+replace github.com/openlibrecommunity/olcrtc => ./olcrtc

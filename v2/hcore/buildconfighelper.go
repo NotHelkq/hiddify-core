@@ -73,6 +73,9 @@ func Parse(ctx context.Context, in *ParseRequest) (*ParseResponse, error) {
 				Message:      err.Error(),
 			}, err
 		}
+		if activeOpt := config.DetectOLCRTCOptions(in.Content, path); activeOpt != nil {
+			_ = config.SaveOLCRTCOptions(in.ConfigPath, activeOpt)
+		}
 	}
 	return &ParseResponse{
 		ResponseCode: hcommon.ResponseCode_OK,

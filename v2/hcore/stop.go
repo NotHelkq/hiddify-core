@@ -6,6 +6,7 @@ import (
 
 	"github.com/hiddify/hiddify-core/v2/config"
 	hcommon "github.com/hiddify/hiddify-core/v2/hcommon"
+	olcrtc "github.com/openlibrecommunity/olcrtc/mobile"
 )
 
 func (s *CoreService) Stop(ctx context.Context, empty *hcommon.Empty) (*CoreInfoResponse, error) {
@@ -17,12 +18,10 @@ func Stop() (coreResponse *CoreInfoResponse, err error) {
 		coreResponse, err = errorWrapper(MessageType_UNEXPECTED_ERROR, recovered_err)
 	})
 
-	// if static.CoreState != CoreStates_STARTED {
-	// 	return errorWrapper(MessageType_INSTANCE_NOT_STARTED, fmt.Errorf("instance not started"))
-	// }
-	// if static.Box == nil {
-	// 	return errorWrapper(MessageType_INSTANCE_NOT_FOUND, fmt.Errorf("instance not found"))
-	// }
+	if olcrtc.IsRunning() {
+		olcrtc.Stop()
+	}
+
 	static.lock.Lock()
 	defer static.lock.Unlock()
 

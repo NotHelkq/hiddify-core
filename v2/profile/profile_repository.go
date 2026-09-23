@@ -207,6 +207,10 @@ func AddByUrl(ctx context.Context, url string, optionalName string, markAsActive
 		return existingProfile, UpdateSubscription(existingProfile, false)
 	}
 
+	if strings.HasPrefix(url, "olcrtc://") {
+		return AddByContent(ctx, url, optionalName, markAsActive)
+	}
+
 	profileId := generateUuid()
 
 	// Attempt to download the profile content

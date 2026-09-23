@@ -2,6 +2,7 @@ package mobile
 
 import (
 	hcore "github.com/hiddify/hiddify-core/v2/hcore"
+	olcrtc "github.com/openlibrecommunity/olcrtc/mobile"
 
 	_ "net/http/pprof"
 
@@ -20,7 +21,23 @@ type SetupOptions struct {
 	FixAndroidStack bool
 }
 
+type olcrtcProtector struct {
+	pi libbox.PlatformInterface
+}
+
+func (p *olcrtcProtector) Protect(fd int) bool {
+	if p.pi != nil {
+		return p.pi.AutoDetectInterfaceControl(int32(fd)) == nil
+	}
+	return false
+}
+
 func Setup(opt *SetupOptions, platformInterface libbox.PlatformInterface) error {
+	if platformInterface != nil {
+		olcrtc.SetProtector(&olcrtcProtector{pi: platformInterface})
+	}
+	olcrtc.SetProviders()
+
 	return hcore.Setup(&hcore.SetupRequest{
 		BasePath:          opt.BasePath,
 		WorkingDir:        opt.WorkingDir,
@@ -32,17 +49,7 @@ func Setup(opt *SetupOptions, platformInterface libbox.PlatformInterface) error 
 		Secret:            opt.Secret,
 		FixAndroidStack:   opt.FixAndroidStack,
 	}, platformInterface)
-
-	// return hcore.Start(17078)
 }
-
-// func Start(configPath string, configContent string, platformInterface libbox.PlatformInterface) (*hcore.CoreInfoResponse, error) {
-// 	state, err := hcore.StartWithPlatformInterface(&hcore.StartRequest{
-// 		ConfigContent: configContent,
-// 		ConfigPath:    configPath,
-// 	}, platformInterface)
-// 	return state, err
-// }
 
 func Start(configPath string, configContent string) error {
 	_, err := hcore.StartService(libbox.BaseContext(nil), &hcore.StartRequest{
@@ -53,6 +60,9 @@ func Start(configPath string, configContent string) error {
 }
 
 func Stop() error {
+	if olcrtc.IsRunning() {
+		_ = olcrtc.Stop()
+	}
 	_, err := hcore.Stop()
 	return err
 }
@@ -66,11 +76,14 @@ func AddGrpcClientPublicKey(clientPublicKey []byte) error {
 }
 
 func Close(mode int) {
+	if olcrtc.IsRunning() {
+		olcrtc.Stop()
+	}
 	hcore.Close(hcore.SetupMode(mode))
 }
 
 func Test() string {
-	return "Hello from mobile"
+	return "Hello from mobile with olcRTC"
 }
 
 func Pause() {
@@ -79,4 +92,39 @@ func Pause() {
 
 func Wake() {
 	hcore.Wake()
+}
+
+// olcRTC specific mobile functions
+
+func StartOLCRTC(carrierName, transportName, roomID, clientID, keyHex string, socksPort int, socksUser, socksPass string) error {
+	return olcrtc.StartWithTransport(carrierName, transportName, roomID, clientID, keyHex, socksPort, socksUser, socksPass)
+}
+
+func StopOLCRTC() error {
+	olcrtc.Stop()
+	return nil
+}
+
+func WaitOLCRTCReady(timeoutMillis int64) error {
+	return olcrtc.WaitReady(timeoutMillis)
+}
+
+func IsOLCRTCRunning() bool {
+	return olcrtc.IsRunning()
+}
+
+func SetOLCRTCDNS(dnsServer string) {
+	olcrtc.SetDNS(dnsServer)
+}
+
+func SetOLCRTCWBToken(token string) {
+	olcrtc.SetWBToken(token)
+}
+
+func SetOLCRTCVP8Options(fps, batchSize int) {
+	olcrtc.SetVP8Options(fps, batchSize)
+}
+
+func SetOLCRTCLivenessOptions(intervalMillis, timeoutMillis, failures int) {
+	olcrtc.SetLivenessOptions(intervalMillis, timeoutMillis, failures)
 }

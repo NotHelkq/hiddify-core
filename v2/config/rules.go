@@ -1,96 +1,167 @@
 package config
 
-// import (
-// 	"strconv"
-// 	"strings"
+import (
+	"strconv"
+	"strings"
 
-// 	"github.com/sagernet/sing-box/option"
-// )
+	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/option"
+)
 
-// type Rule struct {
-// 	RuleSetUrl string `json:"rule-set-url"`
-// 	Domains    string `json:"domains"`
-// 	IP         string `json:"ip"`
-// 	Port       string `json:"port"`
-// 	Network    string `json:"network"`
-// 	Protocol   string `json:"protocol"`
-// 	Outbound   string `json:"outbound"`
-// }
+func (r *Rule) MakeRule() (option.Rule, bool) {
+	if r == nil || !r.Enabled {
+		return option.Rule{}, false
+	}
+	raw := option.RawDefaultRule{
+		Domain:        r.Domains,
+		DomainSuffix:  r.DomainSuffixes,
+		DomainKeyword: r.DomainKeywords,
+		DomainRegex:   r.DomainRegexes,
+		IPCIDR:        r.IpCidrs,
+		SourceIPCIDR:  r.SourceIpCidrs,
+		PackageName:   r.PackageNames,
+		ProcessName:   r.ProcessNames,
+		ProcessPath:   r.ProcessPaths,
+	}
 
-// func (r *Rule) MakeRule() option.DefaultRule {
-// 	rule := option.DefaultRule{}
-// 	if len(r.Domains) > 0 {
-// 		rule = makeDomainRule(rule, strings.Split(r.Domains, ","))
-// 	}
-// 	if len(r.IP) > 0 {
-// 		rule = makeIpRule(rule, strings.Split(r.IP, ","))
-// 	}
-// 	if len(r.Port) > 0 {
-// 		rule = makePortRule(rule, strings.Split(r.Port, ","))
-// 	}
-// 	if len(r.Network) > 0 {
-// 		rule.Network = append(rule.Network, r.Network)
-// 	}
-// 	if len(r.Protocol) > 0 {
-// 		rule.Protocol = append(rule.Protocol, strings.Split(r.Protocol, ",")...)
-// 	}
-// 	return rule
-// }
+	for _, item := range r.RuleSets {
+		if strings.HasPrefix(item, "geosite:") {
+			raw.Geosite = append(raw.Geosite, strings.TrimPrefix(item, "geosite:"))
+		} else if strings.HasPrefix(item, "geoip:") {
+			raw.GeoIP = append(raw.GeoIP, strings.TrimPrefix(item, "geoip:"))
+		} else {
+			raw.RuleSet = append(raw.RuleSet, item)
+		}
+	}
 
-// func (r *Rule) MakeDNSRule() option.DefaultDNSRule {
-// 	rule := option.DefaultDNSRule{}
-// 	domains := strings.Split(r.Domains, ",")
-// 	for _, item := range domains {
-// 		if strings.HasPrefix(item, "geosite:") {
-// 			rule.Geosite = append(rule.Geosite, strings.TrimPrefix(item, "geosite:"))
-// 		} else if strings.HasPrefix(item, "full:") {
-// 			rule.Domain = append(rule.Domain, strings.ToLower(strings.TrimPrefix(item, "full:")))
-// 		} else if strings.HasPrefix(item, "domain:") {
-// 			rule.DomainSuffix = append(rule.DomainSuffix, strings.ToLower(strings.TrimPrefix(item, "domain:")))
-// 		} else if strings.HasPrefix(item, "regexp:") {
-// 			rule.DomainRegex = append(rule.DomainRegex, strings.ToLower(strings.TrimPrefix(item, "regexp:")))
-// 		} else if strings.HasPrefix(item, "keyword:") {
-// 			rule.DomainKeyword = append(rule.DomainKeyword, strings.ToLower(strings.TrimPrefix(item, "keyword:")))
-// 		}
-// 	}
-// 	return rule
-// }
+	for _, p := range r.PortRanges {
+		if strings.Contains(p, ":") {
+			raw.PortRange = append(raw.PortRange, p)
+		} else if port, err := strconv.Atoi(p); err == nil {
+			raw.Port = append(raw.Port, uint16(port))
+		}
+	}
+	for _, p := range r.SourcePortRanges {
+		if strings.Contains(p, ":") {
+			raw.SourcePortRange = append(raw.SourcePortRange, p)
+		} else if port, err := strconv.Atoi(p); err == nil {
+			raw.SourcePort = append(raw.SourcePort, uint16(port))
+		}
+	}
 
-// func makeDomainRule(options option.DefaultRule, list []string) option.DefaultRule {
-// 	for _, item := range list {
-// 		if strings.HasPrefix(item, "geosite:") {
-// 			options.Geosite = append(options.Geosite, strings.TrimPrefix(item, "geosite:"))
-// 		} else if strings.HasPrefix(item, "full:") {
-// 			options.Domain = append(options.Domain, strings.ToLower(strings.TrimPrefix(item, "full:")))
-// 		} else if strings.HasPrefix(item, "domain:") {
-// 			options.DomainSuffix = append(options.DomainSuffix, strings.ToLower(strings.TrimPrefix(item, "domain:")))
-// 		} else if strings.HasPrefix(item, "regexp:") {
-// 			options.DomainRegex = append(options.DomainRegex, strings.ToLower(strings.TrimPrefix(item, "regexp:")))
-// 		} else if strings.HasPrefix(item, "keyword:") {
-// 			options.DomainKeyword = append(options.DomainKeyword, strings.ToLower(strings.TrimPrefix(item, "keyword:")))
-// 		}
-// 	}
-// 	return options
-// }
+	for _, proto := range r.Protocols {
+		switch proto {
+		case Protocol_tls:
+			raw.Protocol = append(raw.Protocol, C.ProtocolTLS)
+		case Protocol_http:
+			raw.Protocol = append(raw.Protocol, C.ProtocolHTTP)
+		case Protocol_quic:
+			raw.Protocol = append(raw.Protocol, C.ProtocolQUIC)
+		case Protocol_stun:
+			raw.Protocol = append(raw.Protocol, C.ProtocolSTUN)
+		case Protocol_dns:
+			raw.Protocol = append(raw.Protocol, C.ProtocolDNS)
+		case Protocol_bittorrent:
+			raw.Protocol = append(raw.Protocol, C.ProtocolBittorrent)
+		}
+	}
 
-// func makeIpRule(options option.DefaultRule, list []string) option.DefaultRule {
-// 	for _, item := range list {
-// 		if strings.HasPrefix(item, "geoip:") {
-// 			options.GeoIP = append(options.GeoIP, strings.TrimPrefix(item, "geoip:"))
-// 		} else {
-// 			options.IPCIDR = append(options.IPCIDR, item)
-// 		}
-// 	}
-// 	return options
-// }
+	if r.Network == Network_tcp {
+		raw.Network = append(raw.Network, "tcp")
+	} else if r.Network == Network_udp {
+		raw.Network = append(raw.Network, "udp")
+	}
 
-// func makePortRule(options option.DefaultRule, list []string) option.DefaultRule {
-// 	for _, item := range list {
-// 		if strings.Contains(item, ":") {
-// 			options.PortRange = append(options.PortRange, item)
-// 		} else if i, err := strconv.Atoi(item); err == nil {
-// 			options.Port = append(options.Port, uint16(i))
-// 		}
-// 	}
-// 	return options
-// }
+	var action option.RuleAction
+	switch r.Outbound {
+	case Outbound_direct:
+		action = option.RuleAction{
+			Action: C.RuleActionTypeRoute,
+			RouteOptions: option.RouteActionOptions{
+				Outbound: OutboundDirectTag,
+			},
+		}
+	case Outbound_block:
+		action = option.RuleAction{
+			Action: C.RuleActionTypeReject,
+			RejectOptions: option.RejectActionOptions{
+				Method: C.RuleActionRejectMethodDefault,
+			},
+		}
+	case Outbound_direct_with_fragment:
+		action = option.RuleAction{
+			Action: C.RuleActionTypeRoute,
+			RouteOptions: option.RouteActionOptions{
+				Outbound: OutboundDirectFragmentTag,
+			},
+		}
+	default: // Outbound_proxy
+		action = option.RuleAction{
+			Action: C.RuleActionTypeRoute,
+			RouteOptions: option.RouteActionOptions{
+				Outbound: OutboundSelectTag,
+			},
+		}
+	}
+
+	return option.Rule{
+		Type: C.RuleTypeDefault,
+		DefaultOptions: option.DefaultRule{
+			RawDefaultRule: raw,
+			RuleAction:     action,
+		},
+	}, true
+}
+
+func (r *Rule) MakeDNSRule() (option.DefaultDNSRule, bool) {
+	if r == nil || !r.Enabled {
+		return option.DefaultDNSRule{}, false
+	}
+	raw := option.RawDefaultDNSRule{
+		Domain:        r.Domains,
+		DomainSuffix:  r.DomainSuffixes,
+		DomainKeyword: r.DomainKeywords,
+		DomainRegex:   r.DomainRegexes,
+		PackageName:   r.PackageNames,
+	}
+
+	for _, item := range r.RuleSets {
+		if strings.HasPrefix(item, "geosite:") {
+			raw.Geosite = append(raw.Geosite, strings.TrimPrefix(item, "geosite:"))
+		} else {
+			raw.RuleSet = append(raw.RuleSet, item)
+		}
+	}
+
+	if len(raw.Domain) == 0 && len(raw.DomainSuffix) == 0 && len(raw.DomainKeyword) == 0 &&
+		len(raw.DomainRegex) == 0 && len(raw.Geosite) == 0 && len(raw.RuleSet) == 0 && len(raw.PackageName) == 0 {
+		return option.DefaultDNSRule{}, false
+	}
+
+	var action option.DNSRuleAction
+	switch r.Outbound {
+	case Outbound_direct, Outbound_direct_with_fragment:
+		action = option.DNSRuleAction{
+			Action: C.RuleActionTypeRoute,
+			RouteOptions: option.DNSRouteActionOptions{
+				Server: DNSMultiDirectTag,
+			},
+		}
+	case Outbound_block:
+		action = option.DNSRuleAction{
+			Action: C.RuleActionTypeReject,
+		}
+	default:
+		action = option.DNSRuleAction{
+			Action: C.RuleActionTypeRoute,
+			RouteOptions: option.DNSRouteActionOptions{
+				Server: DNSMultiRemoteTag,
+			},
+		}
+	}
+
+	return option.DefaultDNSRule{
+		RawDefaultDNSRule: raw,
+		DNSRuleAction:     action,
+	}, true
+}

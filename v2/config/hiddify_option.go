@@ -24,6 +24,7 @@ type HiddifyOptions struct {
 	// GeoIPPath        string      `json:"geoip-path"`
 	// GeoSitePath      string      `json:"geosite-path"`
 	Rules     []Rule      `json:"rules,omitempty" overridable:"true"`
+	RouteRule *RouteRule  `json:"route-rule,omitempty" overridable:"true"`
 	Warp      WarpOptions `json:"warp,omitempty"`
 	Warp2     WarpOptions `json:"warp2,omitempty"`
 	Mux       MuxOptions  `json:"mux,omitempty" overridable:"true"`
