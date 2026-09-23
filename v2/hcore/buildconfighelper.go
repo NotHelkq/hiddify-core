@@ -58,7 +58,7 @@ func Parse(ctx context.Context, in *ParseRequest) (*ParseResponse, error) {
 		path = in.ConfigPath
 	}
 
-	config, err := config.ParseConfigBytes(ctx, &config.ReadOptions{Content: in.Content, Path: path}, true, static.HiddifyOptions, false)
+	parsedConfig, err := config.ParseConfigBytes(ctx, &config.ReadOptions{Content: in.Content, Path: path}, true, static.HiddifyOptions, false)
 	if err != nil {
 		return &ParseResponse{
 			ResponseCode: hcommon.ResponseCode_FAILED,
@@ -66,7 +66,7 @@ func Parse(ctx context.Context, in *ParseRequest) (*ParseResponse, error) {
 		}, err
 	}
 	if in.ConfigPath != "" {
-		err = os.WriteFile(in.ConfigPath, config, 0o644)
+		err = os.WriteFile(in.ConfigPath, parsedConfig, 0o644)
 		if err != nil {
 			return &ParseResponse{
 				ResponseCode: hcommon.ResponseCode_FAILED,
@@ -79,7 +79,7 @@ func Parse(ctx context.Context, in *ParseRequest) (*ParseResponse, error) {
 	}
 	return &ParseResponse{
 		ResponseCode: hcommon.ResponseCode_OK,
-		Content:      string(config),
+		Content:      string(parsedConfig),
 		Message:      "",
 	}, err
 }
