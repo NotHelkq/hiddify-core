@@ -61,7 +61,7 @@ func Start(configPath string, configContent string) error {
 
 func Stop() error {
 	if olcrtc.IsRunning() {
-		_ = olcrtc.Stop()
+		olcrtc.Stop()
 	}
 	_, err := hcore.Stop()
 	return err
@@ -106,7 +106,7 @@ func StopOLCRTC() error {
 }
 
 func WaitOLCRTCReady(timeoutMillis int64) error {
-	return olcrtc.WaitReady(timeoutMillis)
+	return olcrtc.WaitReady(int(timeoutMillis))
 }
 
 func IsOLCRTCRunning() bool {
