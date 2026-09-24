@@ -1,11 +1,13 @@
 package config
 
 import (
+	"encoding/json"
 	"strconv"
 	"strings"
 
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func (r *Rule) MakeRule() (option.Rule, bool) {
@@ -164,4 +166,156 @@ func (r *Rule) MakeDNSRule() (option.DefaultDNSRule, bool) {
 		RawDefaultDNSRule: raw,
 		DNSRuleAction:     action,
 	}, true
+}
+
+func (x *RouteRule) UnmarshalJSON(b []byte) error {
+	if x == nil {
+		return nil
+	}
+	s := strings.TrimSpace(string(b))
+	if s == "" || s == "null" {
+		*x = RouteRule{}
+		return nil
+	}
+	s = strings.ReplaceAll(s, `"bypass"`, `"direct"`)
+	s = strings.ReplaceAll(s, `"reject"`, `"block"`)
+	return protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal([]byte(s), x)
+}
+
+func (x *RouteRule) MarshalJSON() ([]byte, error) {
+	if x == nil {
+		return []byte("null"), nil
+	}
+	return protojson.MarshalOptions{UseProtoNames: true, EmitUnpopulated: false}.Marshal(x)
+}
+
+func (x *Rule) UnmarshalJSON(b []byte) error {
+	if x == nil {
+		return nil
+	}
+	s := strings.TrimSpace(string(b))
+	if s == "" || s == "null" {
+		*x = Rule{}
+		return nil
+	}
+	s = strings.ReplaceAll(s, `"bypass"`, `"direct"`)
+	s = strings.ReplaceAll(s, `"reject"`, `"block"`)
+	return protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal([]byte(s), x)
+}
+
+func (x *Rule) MarshalJSON() ([]byte, error) {
+	if x == nil {
+		return []byte("null"), nil
+	}
+	return protojson.MarshalOptions{UseProtoNames: true, EmitUnpopulated: false}.Marshal(x)
+}
+
+func (x *Outbound) UnmarshalJSON(b []byte) error {
+	var n int32
+	if err := json.Unmarshal(b, &n); err == nil {
+		*x = Outbound(n)
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	s = strings.ToLower(strings.TrimSpace(s))
+	switch s {
+	case "direct", "bypass":
+		*x = Outbound_direct
+	case "direct_with_fragment", "fragment":
+		*x = Outbound_direct_with_fragment
+	case "block", "reject":
+		*x = Outbound_block
+	case "proxy":
+		*x = Outbound_proxy
+	default:
+		if val, ok := Outbound_value[s]; ok {
+			*x = Outbound(val)
+		} else {
+			*x = Outbound_proxy
+		}
+	}
+	return nil
+}
+
+func (x Outbound) MarshalJSON() ([]byte, error) {
+	s, ok := Outbound_name[int32(x)]
+	if ok {
+		return json.Marshal(s)
+	}
+	return json.Marshal("proxy")
+}
+
+func (x *Network) UnmarshalJSON(b []byte) error {
+	var n int32
+	if err := json.Unmarshal(b, &n); err == nil {
+		*x = Network(n)
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	s = strings.ToLower(strings.TrimSpace(s))
+	switch s {
+	case "tcp":
+		*x = Network_tcp
+	case "udp":
+		*x = Network_udp
+	default:
+		*x = Network_all
+	}
+	return nil
+}
+
+func (x Network) MarshalJSON() ([]byte, error) {
+	s, ok := Network_name[int32(x)]
+	if ok {
+		return json.Marshal(s)
+	}
+	return json.Marshal("all")
+}
+
+func (x *Protocol) UnmarshalJSON(b []byte) error {
+	var n int32
+	if err := json.Unmarshal(b, &n); err == nil {
+		*x = Protocol(n)
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	s = strings.ToLower(strings.TrimSpace(s))
+	switch s {
+	case "tls":
+		*x = Protocol_tls
+	case "http":
+		*x = Protocol_http
+	case "quic":
+		*x = Protocol_quic
+	case "stun":
+		*x = Protocol_stun
+	case "dns":
+		*x = Protocol_dns
+	case "bittorrent":
+		*x = Protocol_bittorrent
+	default:
+		if val, ok := Protocol_value[s]; ok {
+			*x = Protocol(val)
+		} else {
+			*x = Protocol_tls
+		}
+	}
+	return nil
+}
+
+func (x Protocol) MarshalJSON() ([]byte, error) {
+	s, ok := Protocol_name[int32(x)]
+	if ok {
+		return json.Marshal(s)
+	}
+	return json.Marshal("tls")
 }
