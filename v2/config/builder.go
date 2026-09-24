@@ -56,9 +56,18 @@ const (
 
 var (
 	OutboundMainDetour       = OutboundSelectTag
-	OutboundWARPConfigDetour = OutboundDirectFragmentTag
+	OutboundWARPConfigDetour = ""
 	PredefinedOutboundTags   = []string{OutboundDirectTag, OutboundBypassTag, OutboundSelectTag, OutboundURLTestTag, OutboundDNSTag, OutboundDirectFragmentTag, WARPConfigTag}
 )
+
+func isDirectDetour(detour string) bool {
+	switch detour {
+	case "", OutboundDirectTag, OutboundDirectFragmentTag, OutboundBypassTag, "direct", "bypass", "direct-fragment":
+		return true
+	default:
+		return false
+	}
+}
 
 // TODO include selectors
 func BuildConfig(ctx context.Context, hopts *HiddifyOptions, inputOpt *ReadOptions) (*option.Options, error) {
@@ -102,7 +111,7 @@ func setNTP(options *option.Options) {
 		ServerOptions: option.ServerOptions{ServerPort: 123, Server: "time.apple.com"},
 		Interval:      badoption.Duration(12 * time.Hour),
 		DialerOptions: option.DialerOptions{
-			Detour: OutboundDirectTag,
+			Detour: "",
 		},
 	}
 }
@@ -135,7 +144,7 @@ func setOutbounds(options *option.Options, input *option.Options, opt *HiddifyOp
 	// inbound==warp over proxies
 	// outbound==proxies over warp
 	OutboundMainDetour = OutboundSelectTag
-	OutboundWARPConfigDetour = OutboundDirectFragmentTag
+	OutboundWARPConfigDetour = ""
 	hasPsiphon := false
 	for _, out := range input.Outbounds {
 
@@ -194,7 +203,7 @@ func setOutbounds(options *option.Options, input *option.Options, opt *HiddifyOp
 				opts.Detour = OutboundSelectTag
 				opts.MTU = 1280
 			} else {
-				opts.Detour = OutboundDirectTag
+				opts.Detour = ""
 				opt.MTU = max(opt.MTU, 1340)
 			}
 

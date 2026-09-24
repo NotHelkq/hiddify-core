@@ -206,8 +206,11 @@ func patchWarp(base *option.Endpoint, configOpt *HiddifyOptions, final bool, sta
 	if base.Type == C.TypeWARP {
 		if opts, ok := base.Options.(*option.WARPEndpointOptions); ok {
 			opts.ServerOptions.Server = ""
-			opts.ServerOptions.ServerPort = 0
-			opts.Profile.Detour = OutboundWARPConfigDetour
+			if isDirectDetour(OutboundWARPConfigDetour) {
+				opts.Profile.Detour = ""
+			} else {
+				opts.Profile.Detour = OutboundWARPConfigDetour
+			}
 			return nil
 			is_saved_key := len(opts.UniqueIdentifier) > 1 && opts.UniqueIdentifier[0] == 'p'
 
@@ -243,7 +246,11 @@ func patchWarp(base *option.Endpoint, configOpt *HiddifyOptions, final bool, sta
 			}
 			base.Type = C.TypeWireGuard
 			if wopts, ok := warpOutbound.Options.(*option.WireGuardEndpointOptions); ok {
-				wopts.Detour = opts.Detour
+				if isDirectDetour(opts.Detour) {
+					wopts.Detour = ""
+				} else {
+					wopts.Detour = opts.Detour
+				}
 				base.Options = wopts
 			}
 
