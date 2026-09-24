@@ -27,10 +27,18 @@ func (r *Rule) MakeRule() (option.Rule, bool) {
 	}
 
 	for _, item := range r.RuleSets {
-		if strings.HasPrefix(item, "geosite:") {
-			raw.Geosite = append(raw.Geosite, strings.TrimPrefix(item, "geosite:"))
+		itemLower := strings.ToLower(item)
+		if strings.HasPrefix(itemLower, "geosite:spotify") || itemLower == "spotify" {
+			raw.DomainSuffix = append(raw.DomainSuffix, "spotify.com", "scdn.co", "spoti.fi", "spotifycdn.com", "spotifycdn.net")
+		} else if strings.HasPrefix(itemLower, "geosite:category-ru") || itemLower == "category-ru" {
+			raw.DomainRegex = append(raw.DomainRegex, `.*\.ru$`, `.*\.xn--p1ai$`)
+			raw.DomainSuffix = append(raw.DomainSuffix, ".ru", ".su", ".xn--p1ai", "yandex.ru", "ya.ru", "vk.com", "vk.me", "ok.ru", "mail.ru", "gosuslugi.ru", "avito.ru", "avito.st", "tinkoff.ru", "t-bank.ru", "sberbank.ru", "ozon.ru", "wildberries.ru", "rutube.ru", "dzen.ru")
+		} else if strings.HasPrefix(item, "geosite:") {
+			tag := "geosite-" + strings.TrimPrefix(item, "geosite:")
+			raw.RuleSet = append(raw.RuleSet, tag)
 		} else if strings.HasPrefix(item, "geoip:") {
-			raw.GeoIP = append(raw.GeoIP, strings.TrimPrefix(item, "geoip:"))
+			tag := "geoip-" + strings.TrimPrefix(item, "geoip:")
+			raw.RuleSet = append(raw.RuleSet, tag)
 		} else {
 			raw.RuleSet = append(raw.RuleSet, item)
 		}
@@ -128,15 +136,22 @@ func (r *Rule) MakeDNSRule() (option.DefaultDNSRule, bool) {
 	}
 
 	for _, item := range r.RuleSets {
-		if strings.HasPrefix(item, "geosite:") {
-			raw.Geosite = append(raw.Geosite, strings.TrimPrefix(item, "geosite:"))
+		itemLower := strings.ToLower(item)
+		if strings.HasPrefix(itemLower, "geosite:spotify") || itemLower == "spotify" {
+			raw.DomainSuffix = append(raw.DomainSuffix, "spotify.com", "scdn.co", "spoti.fi", "spotifycdn.com", "spotifycdn.net")
+		} else if strings.HasPrefix(itemLower, "geosite:category-ru") || itemLower == "category-ru" {
+			raw.DomainRegex = append(raw.DomainRegex, `.*\.ru$`, `.*\.xn--p1ai$`)
+			raw.DomainSuffix = append(raw.DomainSuffix, ".ru", ".su", ".xn--p1ai", "yandex.ru", "ya.ru", "vk.com", "vk.me", "ok.ru", "mail.ru", "gosuslugi.ru", "avito.ru", "avito.st", "tinkoff.ru", "t-bank.ru", "sberbank.ru", "ozon.ru", "wildberries.ru", "rutube.ru", "dzen.ru")
+		} else if strings.HasPrefix(item, "geosite:") {
+			tag := "geosite-" + strings.TrimPrefix(item, "geosite:")
+			raw.RuleSet = append(raw.RuleSet, tag)
 		} else {
 			raw.RuleSet = append(raw.RuleSet, item)
 		}
 	}
 
 	if len(raw.Domain) == 0 && len(raw.DomainSuffix) == 0 && len(raw.DomainKeyword) == 0 &&
-		len(raw.DomainRegex) == 0 && len(raw.Geosite) == 0 && len(raw.RuleSet) == 0 && len(raw.PackageName) == 0 {
+		len(raw.DomainRegex) == 0 && len(raw.RuleSet) == 0 && len(raw.PackageName) == 0 {
 		return option.DefaultDNSRule{}, false
 	}
 

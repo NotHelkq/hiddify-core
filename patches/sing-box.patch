@@ -1,0 +1,78 @@
+diff --git a/protocol/hysteria2/outbound.go b/protocol/hysteria2/outbound.go
+index 7651a0c6..47441d48 100644
+--- a/protocol/hysteria2/outbound.go
++++ b/protocol/hysteria2/outbound.go
+@@ -62,18 +62,19 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
+ 	var geckoPassword string
+ 	var geckoMinPacketSize, geckoMaxPacketSize int
+ 	if options.Obfs != nil {
+-		if options.Obfs.Password == "" {
+-			return nil, E.New("missing obfs password")
+-		}
+-		switch options.Obfs.Type {
+-		case hysteria2.ObfsTypeSalamander:
+-			salamanderPassword = options.Obfs.Password
+-		case hysteria2.ObfsTypeGecko:
+-			geckoPassword = options.Obfs.Password
+-			geckoMinPacketSize = options.Obfs.GeckoOptions.MinPacketSize
+-			geckoMaxPacketSize = options.Obfs.GeckoOptions.MaxPacketSize
+-		default:
+-			return nil, E.New("unknown obfs type: ", options.Obfs.Type)
++		if options.Obfs.Password == "" || options.Obfs.Type == "" {
++			options.Obfs = nil
++		} else {
++			switch options.Obfs.Type {
++			case hysteria2.ObfsTypeSalamander:
++				salamanderPassword = options.Obfs.Password
++			case hysteria2.ObfsTypeGecko:
++				geckoPassword = options.Obfs.Password
++				geckoMinPacketSize = options.Obfs.GeckoOptions.MinPacketSize
++				geckoMaxPacketSize = options.Obfs.GeckoOptions.MaxPacketSize
++			default:
++				options.Obfs = nil
++			}
+ 		}
+ 	}
+ 	outboundDialer, err := dialer.NewWithOptions(dialer.Options{
+diff --git a/route/rule/rule_default.go b/route/rule/rule_default.go
+index 02409c33..5b51a81a 100644
+--- a/route/rule/rule_default.go
++++ b/route/rule/rule_default.go
+@@ -126,13 +126,13 @@ func NewDefaultRule(ctx context.Context, logger log.ContextLogger, options optio
+ 		rule.allItems = append(rule.allItems, item)
+ 	}
+ 	if len(options.Geosite) > 0 {
+-		return nil, E.New("geosite database is deprecated in sing-box 1.8.0 and removed in sing-box 1.12.0")
++		// deprecated: ignore rather than failing
+ 	}
+ 	if len(options.SourceGeoIP) > 0 {
+-		return nil, E.New("geoip database is deprecated in sing-box 1.8.0 and removed in sing-box 1.12.0")
++		// deprecated: ignore rather than failing
+ 	}
+ 	if len(options.GeoIP) > 0 {
+-		return nil, E.New("geoip database is deprecated in sing-box 1.8.0 and removed in sing-box 1.12.0")
++		// deprecated: ignore rather than failing
+ 	}
+ 	if len(options.SourceIPCIDR) > 0 {
+ 		item, err := NewIPCIDRItem(true, options.SourceIPCIDR)
+diff --git a/route/rule/rule_dns.go b/route/rule/rule_dns.go
+index 438c6fbd..68522742 100644
+--- a/route/rule/rule_dns.go
++++ b/route/rule/rule_dns.go
+@@ -143,13 +143,13 @@ func NewDefaultDNSRule(ctx context.Context, logger log.ContextLogger, options op
+ 		rule.allItems = append(rule.allItems, item)
+ 	}
+ 	if len(options.Geosite) > 0 { //nolint:staticcheck
+-		return nil, E.New("geosite database is deprecated in sing-box 1.8.0 and removed in sing-box 1.12.0")
++		// deprecated: ignore rather than failing
+ 	}
+ 	if len(options.SourceGeoIP) > 0 {
+-		return nil, E.New("geoip database is deprecated in sing-box 1.8.0 and removed in sing-box 1.12.0")
++		// deprecated: ignore rather than failing
+ 	}
+ 	if len(options.GeoIP) > 0 {
+-		return nil, E.New("geoip database is deprecated in sing-box 1.8.0 and removed in sing-box 1.12.0")
++		// deprecated: ignore rather than failing
+ 	}
+ 	if len(options.SourceIPCIDR) > 0 {
+ 		item, err := NewIPCIDRItem(true, options.SourceIPCIDR)
