@@ -205,9 +205,7 @@ func (h *HiddifyInstance) AllProxiesInfoStream(stream grpc.ServerStreamingServer
 		}
 		defer monitor.UnsubscribeGroup("", urltestch)
 
-		// timer2 := time.NewTicker(10 * time.Second)
-		// defer timer2.Stop()
-		debounceWindow := 1000 * time.Millisecond
+		debounceWindow := 100 * time.Millisecond
 		var (
 			timer   *time.Timer
 			timerCh <-chan time.Time

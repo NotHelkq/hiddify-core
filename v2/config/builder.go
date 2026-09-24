@@ -256,9 +256,10 @@ func setOutbounds(options *option.Options, input *option.Options, opt *HiddifyOp
 		endpoints = append(endpoints, *out)
 	}
 	if len(opt.ConnectionTestUrls) == 0 {
-		opt.ConnectionTestUrls = []string{opt.ConnectionTestUrl, "https://www.google.com/generate_204", "http://captive.apple.com/generate_204", "https://cp.cloudflare.com"}
-		if isBlockedConnectionTestUrl(opt.ConnectionTestUrl) {
+		if opt.ConnectionTestUrl != "" {
 			opt.ConnectionTestUrls = []string{opt.ConnectionTestUrl}
+		} else {
+			opt.ConnectionTestUrls = []string{"http://cp.cloudflare.com/generate_204"}
 		}
 	}
 	// urlTest := option.Outbound{
@@ -389,9 +390,10 @@ func contains(slice []string, item string) bool {
 
 func setExperimental(options *option.Options, hopt *HiddifyOptions) {
 	if len(hopt.ConnectionTestUrls) == 0 {
-		hopt.ConnectionTestUrls = []string{hopt.ConnectionTestUrl, "http://captive.apple.com/generate_204", "https://cp.cloudflare.com", "https://google.com/generate_204"}
-		if isBlockedConnectionTestUrl(hopt.ConnectionTestUrl) {
+		if hopt.ConnectionTestUrl != "" {
 			hopt.ConnectionTestUrls = []string{hopt.ConnectionTestUrl}
+		} else {
+			hopt.ConnectionTestUrls = []string{"http://cp.cloudflare.com/generate_204"}
 		}
 	}
 	if hopt.EnableClashApi {
@@ -416,7 +418,7 @@ func setExperimental(options *option.Options, hopt *HiddifyOptions) {
 			Monitoring: &option.MonitoringOptions{
 				URLs:           hopt.ConnectionTestUrls,
 				Interval:       badoption.Duration(hopt.URLTestInterval.Duration()),
-				DebounceWindow: badoption.Duration(time.Millisecond * 500),
+				DebounceWindow: badoption.Duration(time.Millisecond * 100),
 				IdleTimeout:    badoption.Duration(hopt.URLTestInterval.Duration().Nanoseconds() * 3),
 			},
 		}
