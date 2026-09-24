@@ -135,7 +135,7 @@ func parseSubscription(ctx context.Context, content []byte, configOpt *HiddifyOp
 		if err == nil {
 			return patchConfigOptions(ctx, v2ray, "V2rayParser", configOpt)
 		}
-		return nil, fmt.Errorf("unable to determine config format")
+		return nil, fmt.Errorf("unable to determine config format: %w", err)
 	}
 
 	// Case 2: One or more olcRTC lines found!

@@ -178,8 +178,15 @@ func ParseOLCRTCURI(uriStr string) (*OLCRTCOptions, error) {
 		}
 	}
 
-	if u.Fragment != "" {
-		opts.Name = u.Fragment
+	frag := u.Fragment
+	if frag != "" {
+		frag = strings.TrimLeft(frag, "#")
+		if unescaped, err := url.QueryUnescape(frag); err == nil && unescaped != "" {
+			frag = unescaped
+		}
+	}
+	if frag != "" {
+		opts.Name = frag
 	} else {
 		opts.Name = fmt.Sprintf("olcRTC %s", opts.Provider)
 	}
