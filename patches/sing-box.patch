@@ -76,3 +76,21 @@ index 438c6fbd..68522742 100644
  	}
  	if len(options.SourceIPCIDR) > 0 {
  		item, err := NewIPCIDRItem(true, options.SourceIPCIDR)
+diff --git a/option/v2ray_transport.go b/option/v2ray_transport.go
+index 3e2f3c2e..42d25519 100644
+--- a/option/v2ray_transport.go
++++ b/option/v2ray_transport.go
+@@ -199,7 +199,12 @@ func checkV2RayXHTTPBaseOptions(mode string, options *V2RayXHTTPBaseOptions) err
+ 		}
+ 	}
+ 	if options.XPaddingBytes.From <= 0 || options.XPaddingBytes.To <= 0 {
+-		return E.New("xPaddingBytes cannot be disabled")
++		options.XPaddingBytes = Xbadoption.Range{
++			From: 100,
++			To:   1000,
++		}
++	} else if options.XPaddingBytes.From > options.XPaddingBytes.To {
++		options.XPaddingBytes.From, options.XPaddingBytes.To = options.XPaddingBytes.To, options.XPaddingBytes.From
+ 	}
+ 	if options.XPaddingKey == "" {
+ 		options.XPaddingKey = "x_padding"
