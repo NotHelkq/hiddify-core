@@ -1,6 +1,16 @@
 name: Build
 on:
   workflow_dispatch:
+    inputs:
+      upload-artifact:
+        type: boolean
+        default: true
+      tag-name:
+        type: string
+        default: "draft"
+      channel:
+        type: string
+        default: "dev"
   workflow_call:
     inputs:
       upload-artifact:
@@ -572,7 +582,7 @@ jobs:
 
   upload-prerelease:
     permissions: write-all
-    if: ${{ inputs.upload-artifact }}
+    if: ${{ inputs.upload-artifact != false }}
     # if: false
     needs: [build]
     runs-on: ubuntu-latest
