@@ -137,6 +137,10 @@ func StartService(ctx context.Context, in *StartRequest) (coreResponse *CoreInfo
 			return errorWrapper(MessageType_START_SERVICE, fmt.Errorf("failed to start olcrtc: %w", err))
 		}
 		_ = olcrtc.WaitReady(5000)
+	} else {
+		if olcrtc.IsRunning() {
+			olcrtc.Stop()
+		}
 	}
 
 	Log(LogLevel_DEBUG, LogType_CORE, "Main Service pre start")

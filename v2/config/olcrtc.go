@@ -34,8 +34,8 @@ func ParseOLCRTCURI(uriStr string) (*OLCRTCOptions, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid olcrtc uri: %w", err)
 	}
-	if u.Scheme != "olcrtc" {
-		return nil, fmt.Errorf("not an olcrtc uri")
+	if u.Scheme != "olcrtc" && u.Scheme != "olconnect" {
+		return nil, fmt.Errorf("not an olcrtc/olconnect uri")
 	}
 
 	q := u.Query()
@@ -173,19 +173,18 @@ func (opts *OLCRTCOptions) ToSingboxJSON() []byte {
 
 	res := map[string]interface{}{
 		"outbounds": []interface{}{socksOutbound},
-		"_olcrtc":   opts,
 	}
 	b, _ := json.Marshal(res)
 	return b
 }
 
-func DetectOLCRTCOptions(content string, path string) *OLCRTCOptions {
-	if ActiveOLCRTCOptions != nil {
-		return ActiveOLCRTCOptions
-	}
+func isOLCRTCUri(s string) bool {
+	return strings.HasPrefix(s, "olcrtc://") || strings.HasPrefix(s, "olconnect://")
+}
 
+func DetectOLCRTCOptions(content string, path string) *OLCRTCOptions {
 	trimmed := strings.TrimSpace(content)
-	if strings.HasPrefix(trimmed, "olcrtc://") {
+	if isOLCRTCUri(trimmed) {
 		if opts, err := ParseOLCRTCURI(trimmed); err == nil {
 			ActiveOLCRTCOptions = opts
 			return opts
@@ -219,7 +218,7 @@ func DetectOLCRTCOptions(content string, path string) *OLCRTCOptions {
 
 		if data, err := os.ReadFile(path); err == nil {
 			trimmedFile := strings.TrimSpace(string(data))
-			if strings.HasPrefix(trimmedFile, "olcrtc://") {
+			if isOLCRTCUri(trimmedFile) {
 				if opts, err := ParseOLCRTCURI(trimmedFile); err == nil {
 					ActiveOLCRTCOptions = opts
 					return opts
@@ -242,6 +241,7 @@ func DetectOLCRTCOptions(content string, path string) *OLCRTCOptions {
 		}
 	}
 
+	ActiveOLCRTCOptions = nil
 	return nil
 }
 
