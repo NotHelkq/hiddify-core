@@ -20,7 +20,7 @@ func decodeVmess(vmessConfig string) (map[string]string, error) {
 
 	var fragment string
 	if hashIdx := strings.Index(vmessData, "#"); hashIdx != -1 {
-		rawFrag := strings.TrimLeft(vmessData[hashIdx:], "#")
+		rawFrag := vmessData[hashIdx+1:]
 		if unescaped, err := url.QueryUnescape(rawFrag); err == nil && unescaped != "" {
 			fragment = strings.TrimSpace(unescaped)
 		} else {

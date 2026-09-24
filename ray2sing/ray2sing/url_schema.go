@@ -40,7 +40,6 @@ func ParseUrl(inputURL string, defaultPort uint16) (*UrlSchema, error) {
 
 	frag := parsedURL.Fragment
 	if frag != "" {
-		frag = strings.TrimLeft(frag, "#")
 		if unescaped, err := url.QueryUnescape(frag); err == nil && unescaped != "" {
 			frag = unescaped
 		}

@@ -96,8 +96,8 @@ func ParseOLCRTCURI(uriStr string) (*OLCRTCOptions, error) {
 	opts := &OLCRTCOptions{
 		Type:                 "olcrtc",
 		DNSServer:            "77.88.8.8:53",
-		VP8FPS:               60,
-		VP8BatchSize:         8,
+		VP8FPS:               120,
+		VP8BatchSize:         64,
 		KeepaliveIntervalSec: 15,
 		SocksPort:            10808,
 	}
@@ -180,7 +180,6 @@ func ParseOLCRTCURI(uriStr string) (*OLCRTCOptions, error) {
 
 	frag := u.Fragment
 	if frag != "" {
-		frag = strings.TrimLeft(frag, "#")
 		if unescaped, err := url.QueryUnescape(frag); err == nil && unescaped != "" {
 			frag = unescaped
 		}

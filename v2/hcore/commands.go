@@ -42,9 +42,11 @@ func (h *HiddifyInstance) readStatus(prev *SystemInfo) *SystemInfo {
 		}
 		if box := h.Box(); box != nil {
 			current := ""
+			activeTag := ""
 			if currentOutBound, ok := box.Outbound().Outbound(config.OutboundSelectTag); ok {
 				if selectOutBound, ok := currentOutBound.(*group.Selector); ok {
 					current = selectOutBound.Now()
+					activeTag = current
 					message.CurrentOutbound = TrimTagName(current)
 				}
 			}
@@ -52,11 +54,22 @@ func (h *HiddifyInstance) readStatus(prev *SystemInfo) *SystemInfo {
 			if currentOutBound, ok := box.Outbound().Outbound(current); ok {
 				if g, ok := currentOutBound.(adapter.OutboundGroup); ok {
 					if now := g.Now(); now != "" {
+						activeTag = now
 						message.CurrentOutbound = fmt.Sprint(message.CurrentOutbound, "→", TrimTagName(now))
 					}
 				}
 			}
 			// }
+			if activeTag != "" {
+				if ctx := h.Context(); ctx != nil {
+					if monitor := monitoring.Get(ctx); monitor != nil {
+						hismap := monitor.OutboundsHistory("")
+						if his, ok := hismap[activeTag]; ok && his != nil && his.Delay > 0 && his.Delay < 65000 {
+							message.CurrentOutbound = fmt.Sprintf("%s (%d ms)", message.CurrentOutbound, his.Delay)
+						}
+					}
+				}
+			}
 		}
 
 		if prev == nil || prev.CurrentProfile == "" || message.UplinkTotal < 1000000 {
