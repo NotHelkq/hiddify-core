@@ -242,6 +242,13 @@ func (h *HiddifyInstance) SelectOutbound(in *SelectOutboundRequest) (*hcommon.Re
 				Message: E.New("outbound not found in selector:: ", in.GroupTag).Error(),
 			}, E.New("outbound not found in selector: ", in.GroupTag)
 		}
+		if opt := config.GetOLCRTCOption(in.OutboundTag); opt != nil {
+			go func() {
+				if err := SwitchOLCRTC(opt); err != nil {
+					Log(LogLevel_ERROR, LogType_CORE, "Failed to switch olcRTC: ", err)
+				}
+			}()
+		}
 		Log(LogLevel_DEBUG, LogType_CORE, "Trying to ping outbound: ", in.OutboundTag)
 
 		// if urltesHistory := h.UrlTestHistory(); urltesHistory != nil {

@@ -28,6 +28,9 @@ func (h *HiddifyInstance) GetProxyInfo(url_test_history *adapter.URLTestHistory,
 
 	out.Tag = detour.Tag()
 	out.Type = detour.DisplayType()
+	if config.IsOLCRTCTag(out.Tag) {
+		out.Type = "olcRTC"
+	}
 	if group, isGroup := detour.(adapter.OutboundGroup); isGroup {
 		out.IsGroup = true
 		gnow := group.Now()

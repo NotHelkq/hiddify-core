@@ -107,22 +107,108 @@ func parseConfigContent(ctx context.Context, content []byte, debug bool, configO
 		return patchConfigStr(ctx, output, "ClashParser", configOpt)
 	}
 
-	strContent := strings.TrimSpace(string(content))
-	if isOLCRTCUri(strContent) {
-		olcrtcOpt, err := ParseOLCRTCURI(strContent)
-		if err == nil {
-			ActiveOLCRTCOptions = olcrtcOpt
-			return patchConfigStr(ctx, olcrtcOpt.ToSingboxJSON(), "OLCRTCParser", configOpt)
+	return parseSubscription(ctx, content, configOpt)
+}
+
+func parseSubscription(ctx context.Context, content []byte, configOpt *HiddifyOptions) (*option.Options, error) {
+	decodedStr := TryDecodeSubscription(string(content))
+	rawLines := strings.Split(strings.ReplaceAll(decodedStr, "\r\n", "\n"), "\n")
+
+	var olcrtcLines []string
+	var otherLines []string
+
+	for _, rawLine := range rawLines {
+		line := strings.TrimSpace(rawLine)
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "//") {
+			continue
 		}
-		return nil, fmt.Errorf("olcrtc parser error: %w", err)
+		if isOLCRTCUri(line) {
+			olcrtcLines = append(olcrtcLines, line)
+		} else {
+			otherLines = append(otherLines, line)
+		}
 	}
 
-	v2ray, err := ray2sing.Ray2SingboxOptions(ctx, string(content), configOpt.UseXrayCoreWhenPossible)
-	if err == nil {
-		return patchConfigOptions(ctx, v2ray, "V2rayParser", configOpt)
+	// Case 1: No olcRTC lines found -> standard ray2sing parser
+	if len(olcrtcLines) == 0 {
+		v2ray, err := ray2sing.Ray2SingboxOptions(ctx, string(content), configOpt.UseXrayCoreWhenPossible)
+		if err == nil {
+			return patchConfigOptions(ctx, v2ray, "V2rayParser", configOpt)
+		}
+		return nil, fmt.Errorf("unable to determine config format")
 	}
 
-	return nil, fmt.Errorf("unable to determine config format")
+	// Case 2: One or more olcRTC lines found!
+	store := &OLCRTCStore{Options: make(map[string]*OLCRTCOptions)}
+	var olcOutbounds []option.Outbound
+	var olcOutboundsJSON []map[string]interface{}
+	basePort := 10808
+
+	for i, line := range olcrtcLines {
+		opt, err := ParseOLCRTCURI(line)
+		if err != nil {
+			continue
+		}
+		port := opt.SocksPort
+		if port <= 0 {
+			port = basePort + i
+			opt.SocksPort = port
+		}
+		tag := opt.Name
+		if tag == "" {
+			tag = fmt.Sprintf("olcRTC %s", opt.Provider)
+		}
+		if _, exists := store.Options[tag]; exists {
+			tag = fmt.Sprintf("%s (%d)", tag, i+1)
+			opt.Name = tag
+		}
+		store.Options[tag] = opt
+		if store.Active == "" {
+			store.Active = tag
+			ActiveOLCRTCOptions = opt
+		}
+		RegisterOLCRTCOption(tag, opt)
+
+		socksMap := map[string]interface{}{
+			"type":        "socks",
+			"tag":         tag,
+			"server":      "127.0.0.1",
+			"server_port": port,
+			"version":     "5",
+		}
+		olcOutboundsJSON = append(olcOutboundsJSON, socksMap)
+
+		var ob option.Outbound
+		b, _ := json.Marshal(socksMap)
+		if err := ob.UnmarshalJSONContext(ctx, b); err == nil {
+			olcOutbounds = append(olcOutbounds, ob)
+		}
+	}
+
+	if len(store.Options) > 0 {
+		ActiveOLCRTCStore = store
+	}
+
+	// Sub-case 2a: Mixed subscription - other proxy protocols are also present
+	if len(otherLines) > 0 {
+		otherContent := strings.Join(otherLines, "\n")
+		v2ray, err := ray2sing.Ray2SingboxOptions(ctx, otherContent, configOpt.UseXrayCoreWhenPossible)
+		if err == nil && v2ray != nil {
+			v2ray.Outbounds = append(v2ray.Outbounds, olcOutbounds...)
+			return patchConfigOptions(ctx, v2ray, "V2rayParser", configOpt)
+		}
+	}
+
+	// Sub-case 2b: Pure olcRTC subscription (or ray2sing produced no outbounds)
+	if len(olcOutboundsJSON) > 0 {
+		res := map[string]interface{}{
+			"outbounds": olcOutboundsJSON,
+		}
+		b, _ := json.Marshal(res)
+		return patchConfigStr(ctx, b, "OLCRTCParser", configOpt)
+	}
+
+	return nil, fmt.Errorf("failed to parse subscription with olcrtc")
 }
 
 func patchConfigStr(ctx context.Context, content []byte, name string, configOpt *HiddifyOptions) (*option.Options, error) {

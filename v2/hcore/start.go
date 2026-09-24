@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/hiddify/hiddify-core/v2/config"
@@ -115,32 +116,11 @@ func StartService(ctx context.Context, in *StartRequest) (coreResponse *CoreInfo
 	saveLastStartRequest(in)
 
 	if olcrtcOpt := config.DetectOLCRTCOptions(in.ConfigContent, in.ConfigPath); olcrtcOpt != nil {
-		if olcrtc.IsRunning() {
-			olcrtc.Stop()
-		}
-		if olcrtcOpt.DNSServer != "" {
-			olcrtc.SetDNS(olcrtcOpt.DNSServer)
-		}
-		if olcrtcOpt.AuthToken != "" {
-			olcrtc.SetWBToken(olcrtcOpt.AuthToken)
-		}
-		if olcrtcOpt.VP8FPS > 0 {
-			olcrtc.SetVP8Options(olcrtcOpt.VP8FPS, olcrtcOpt.VP8BatchSize)
-		}
-		socksPort := olcrtcOpt.SocksPort
-		if socksPort <= 0 {
-			socksPort = 10808
-		}
-		Log(LogLevel_INFO, LogType_CORE, fmt.Sprintf("Starting olcRTC: carrier=%s, transport=%s, room=%s, port=%d", olcrtcOpt.Provider, olcrtcOpt.Transport, olcrtcOpt.RoomID, socksPort))
-		err := olcrtc.StartWithTransport(olcrtcOpt.Provider, olcrtcOpt.Transport, olcrtcOpt.RoomID, olcrtcOpt.ClientID, olcrtcOpt.KeyHex, socksPort, "", "")
-		if err != nil {
+		if err := SwitchOLCRTC(olcrtcOpt); err != nil {
 			return errorWrapper(MessageType_START_SERVICE, fmt.Errorf("failed to start olcrtc: %w", err))
 		}
-		_ = olcrtc.WaitReady(5000)
 	} else {
-		if olcrtc.IsRunning() {
-			olcrtc.Stop()
-		}
+		_ = SwitchOLCRTC(nil)
 	}
 
 	Log(LogLevel_DEBUG, LogType_CORE, "Main Service pre start")
@@ -185,4 +165,62 @@ func StartService(ctx context.Context, in *StartRequest) (coreResponse *CoreInfo
 	}
 
 	return SetCoreStatus(CoreStates_STARTED, MessageType_EMPTY, ""), nil
+}
+
+var (
+	activeRunningOLCRTCOpt *config.OLCRTCOptions
+	olcrtcLock             sync.Mutex
+)
+
+func SwitchOLCRTC(opt *config.OLCRTCOptions) error {
+	olcrtcLock.Lock()
+	defer olcrtcLock.Unlock()
+
+	if opt == nil {
+		if olcrtc.IsRunning() {
+			Log(LogLevel_INFO, LogType_CORE, "Stopping olcRTC")
+			olcrtc.Stop()
+		}
+		activeRunningOLCRTCOpt = nil
+		return nil
+	}
+
+	if olcrtc.IsRunning() && activeRunningOLCRTCOpt != nil {
+		if activeRunningOLCRTCOpt.Provider == opt.Provider &&
+			activeRunningOLCRTCOpt.RoomID == opt.RoomID &&
+			activeRunningOLCRTCOpt.ClientID == opt.ClientID &&
+			activeRunningOLCRTCOpt.KeyHex == opt.KeyHex &&
+			activeRunningOLCRTCOpt.Transport == opt.Transport {
+			Log(LogLevel_DEBUG, LogType_CORE, "olcRTC already running for this config")
+			return nil
+		}
+	}
+
+	if olcrtc.IsRunning() {
+		Log(LogLevel_INFO, LogType_CORE, "Stopping existing olcRTC instance before switch")
+		olcrtc.Stop()
+	}
+
+	if opt.DNSServer != "" {
+		olcrtc.SetDNS(opt.DNSServer)
+	}
+	if opt.AuthToken != "" {
+		olcrtc.SetWBToken(opt.AuthToken)
+	}
+	if opt.VP8FPS > 0 {
+		olcrtc.SetVP8Options(opt.VP8FPS, opt.VP8BatchSize)
+	}
+	socksPort := opt.SocksPort
+	if socksPort <= 0 {
+		socksPort = 10808
+	}
+	Log(LogLevel_INFO, LogType_CORE, fmt.Sprintf("Starting olcRTC: carrier=%s, transport=%s, room=%s, port=%d", opt.Provider, opt.Transport, opt.RoomID, socksPort))
+	err := olcrtc.StartWithTransport(opt.Provider, opt.Transport, opt.RoomID, opt.ClientID, opt.KeyHex, socksPort, "", "")
+	if err != nil {
+		return fmt.Errorf("failed to start olcrtc: %w", err)
+	}
+	_ = olcrtc.WaitReady(5000)
+	activeRunningOLCRTCOpt = opt
+	config.ActiveOLCRTCOptions = opt
+	return nil
 }

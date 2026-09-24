@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type OLCRTCOptions struct {
@@ -27,7 +29,59 @@ type OLCRTCOptions struct {
 	SocksPort            int    `json:"socks_port,omitempty"`
 }
 
-var ActiveOLCRTCOptions *OLCRTCOptions
+type OLCRTCStore struct {
+	Active  string                    `json:"active,omitempty"`
+	Options map[string]*OLCRTCOptions `json:"options"`
+}
+
+var (
+	ActiveOLCRTCOptions     *OLCRTCOptions
+	ActiveOLCRTCStore       *OLCRTCStore
+	RegisteredOLCRTCOptions = make(map[string]*OLCRTCOptions)
+	registryMu              sync.RWMutex
+)
+
+func RegisterOLCRTCOption(tag string, opt *OLCRTCOptions) {
+	registryMu.Lock()
+	defer registryMu.Unlock()
+	RegisteredOLCRTCOptions[tag] = opt
+	RegisteredOLCRTCOptions[strings.TrimSpace(strings.Split(tag, "§")[0])] = opt
+}
+
+func GetOLCRTCOption(tag string) *OLCRTCOptions {
+	registryMu.RLock()
+	defer registryMu.RUnlock()
+	cleanTag := strings.TrimSpace(strings.Split(tag, "§")[0])
+	if opt, ok := RegisteredOLCRTCOptions[tag]; ok {
+		return opt
+	}
+	if opt, ok := RegisteredOLCRTCOptions[cleanTag]; ok {
+		return opt
+	}
+	if ActiveOLCRTCStore != nil {
+		if opt, ok := ActiveOLCRTCStore.Options[tag]; ok {
+			return opt
+		}
+		if opt, ok := ActiveOLCRTCStore.Options[cleanTag]; ok {
+			return opt
+		}
+	}
+	if ActiveOLCRTCOptions != nil {
+		if ActiveOLCRTCOptions.Name == tag || ActiveOLCRTCOptions.Name == cleanTag {
+			return ActiveOLCRTCOptions
+		}
+	}
+	return nil
+}
+
+func IsOLCRTCTag(tag string) bool {
+	cleanTag := strings.TrimSpace(strings.Split(tag, "§")[0])
+	cleanLower := strings.ToLower(cleanTag)
+	if strings.Contains(cleanLower, "olcrtc") || strings.Contains(cleanLower, "olconnect") {
+		return true
+	}
+	return GetOLCRTCOption(tag) != nil
+}
 
 func ParseOLCRTCURI(uriStr string) (*OLCRTCOptions, error) {
 	u, err := url.Parse(uriStr)
@@ -179,61 +233,114 @@ func (opts *OLCRTCOptions) ToSingboxJSON() []byte {
 }
 
 func isOLCRTCUri(s string) bool {
-	return strings.HasPrefix(s, "olcrtc://") || strings.HasPrefix(s, "olconnect://")
+	trimmed := strings.TrimSpace(s)
+	return strings.HasPrefix(trimmed, "olcrtc://") || strings.HasPrefix(trimmed, "olconnect://")
+}
+
+func TryDecodeSubscription(s string) string {
+	trimmed := strings.TrimSpace(s)
+	for _, enc := range []*base64.Encoding{
+		base64.StdEncoding,
+		base64.RawStdEncoding,
+		base64.URLEncoding,
+		base64.RawURLEncoding,
+	} {
+		if dec, err := enc.DecodeString(trimmed); err == nil && len(dec) > 0 {
+			decStr := string(dec)
+			if strings.Contains(decStr, "://") || strings.Contains(decStr, "\n") {
+				return decStr
+			}
+		}
+	}
+	return s
 }
 
 func DetectOLCRTCOptions(content string, path string) *OLCRTCOptions {
-	trimmed := strings.TrimSpace(content)
-	if isOLCRTCUri(trimmed) {
-		if opts, err := ParseOLCRTCURI(trimmed); err == nil {
-			ActiveOLCRTCOptions = opts
-			return opts
+	// 1. Check sidecar file first (loaded from previously saved profile)
+	if path != "" {
+		sidecar := path + ".olcrtc"
+		if data, err := os.ReadFile(sidecar); err == nil {
+			var store OLCRTCStore
+			if err := json.Unmarshal(data, &store); err == nil && len(store.Options) > 0 {
+				for tag, opt := range store.Options {
+					RegisterOLCRTCOption(tag, opt)
+				}
+				ActiveOLCRTCStore = &store
+				if active, ok := store.Options[store.Active]; ok {
+					ActiveOLCRTCOptions = active
+					return active
+				}
+				for _, opt := range store.Options {
+					ActiveOLCRTCOptions = opt
+					return opt
+				}
+			}
+
+			var singleOpt OLCRTCOptions
+			if err := json.Unmarshal(data, &singleOpt); err == nil && singleOpt.RoomID != "" {
+				RegisterOLCRTCOption(singleOpt.Name, &singleOpt)
+				ActiveOLCRTCOptions = &singleOpt
+				return &singleOpt
+			}
 		}
 	}
 
-	if strings.Contains(content, "_olcrtc") {
-		var raw map[string]interface{}
-		if err := json.Unmarshal([]byte(content), &raw); err == nil {
-			if olcData, ok := raw["_olcrtc"]; ok {
-				if b, err := json.Marshal(olcData); err == nil {
-					var opts OLCRTCOptions
-					if err := json.Unmarshal(b, &opts); err == nil && opts.RoomID != "" {
-						ActiveOLCRTCOptions = &opts
-						return &opts
+	// 2. Check content (may be base64 or multi-line containing olcrtc:// links)
+	sourceContent := content
+	if sourceContent == "" && path != "" {
+		if data, err := os.ReadFile(path); err == nil {
+			sourceContent = string(data)
+		}
+	}
+
+	if sourceContent != "" {
+		decoded := TryDecodeSubscription(sourceContent)
+		lines := strings.Split(strings.ReplaceAll(decoded, "\r\n", "\n"), "\n")
+		store := &OLCRTCStore{Options: make(map[string]*OLCRTCOptions)}
+		basePort := 10808
+		for i, rawLine := range lines {
+			line := strings.TrimSpace(rawLine)
+			if isOLCRTCUri(line) {
+				if opt, err := ParseOLCRTCURI(line); err == nil {
+					if opt.SocksPort <= 0 {
+						opt.SocksPort = basePort + i
+					}
+					tag := opt.Name
+					if tag == "" {
+						tag = fmt.Sprintf("olcRTC %s", opt.Provider)
+					}
+					if _, exists := store.Options[tag]; exists {
+						tag = fmt.Sprintf("%s (%d)", tag, i+1)
+						opt.Name = tag
+					}
+					store.Options[tag] = opt
+					RegisterOLCRTCOption(tag, opt)
+					if store.Active == "" {
+						store.Active = tag
+						ActiveOLCRTCOptions = opt
 					}
 				}
 			}
 		}
-	}
 
-	if path != "" {
-		sidecar := path + ".olcrtc"
-		if data, err := os.ReadFile(sidecar); err == nil {
-			var opts OLCRTCOptions
-			if err := json.Unmarshal(data, &opts); err == nil && opts.RoomID != "" {
-				ActiveOLCRTCOptions = &opts
-				return &opts
+		if len(store.Options) > 0 {
+			ActiveOLCRTCStore = store
+			if path != "" {
+				_ = SaveOLCRTCStore(path, store)
 			}
+			return ActiveOLCRTCOptions
 		}
 
-		if data, err := os.ReadFile(path); err == nil {
-			trimmedFile := strings.TrimSpace(string(data))
-			if isOLCRTCUri(trimmedFile) {
-				if opts, err := ParseOLCRTCURI(trimmedFile); err == nil {
-					ActiveOLCRTCOptions = opts
-					return opts
-				}
-			}
-			if strings.Contains(string(data), "_olcrtc") {
-				var raw map[string]interface{}
-				if err := json.Unmarshal(data, &raw); err == nil {
-					if olcData, ok := raw["_olcrtc"]; ok {
-						if b, err := json.Marshal(olcData); err == nil {
-							var opts OLCRTCOptions
-							if err := json.Unmarshal(b, &opts); err == nil && opts.RoomID != "" {
-								ActiveOLCRTCOptions = &opts
-								return &opts
-							}
+		if strings.Contains(sourceContent, "_olcrtc") {
+			var raw map[string]interface{}
+			if err := json.Unmarshal([]byte(sourceContent), &raw); err == nil {
+				if olcData, ok := raw["_olcrtc"]; ok {
+					if b, err := json.Marshal(olcData); err == nil {
+						var opt OLCRTCOptions
+						if err := json.Unmarshal(b, &opt); err == nil && opt.RoomID != "" {
+							RegisterOLCRTCOption(opt.Name, &opt)
+							ActiveOLCRTCOptions = &opt
+							return &opt
 						}
 					}
 				}
@@ -241,15 +348,34 @@ func DetectOLCRTCOptions(content string, path string) *OLCRTCOptions {
 		}
 	}
 
-	ActiveOLCRTCOptions = nil
+	if ActiveOLCRTCOptions != nil {
+		return ActiveOLCRTCOptions
+	}
 	return nil
 }
 
 func SaveOLCRTCOptions(path string, opts *OLCRTCOptions) error {
-	if path == "" || opts == nil {
+	if path == "" {
+		return nil
+	}
+	if ActiveOLCRTCStore != nil && len(ActiveOLCRTCStore.Options) > 0 {
+		return SaveOLCRTCStore(path, ActiveOLCRTCStore)
+	}
+	if opts == nil {
 		return nil
 	}
 	b, err := json.MarshalIndent(opts, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path+".olcrtc", b, 0o644)
+}
+
+func SaveOLCRTCStore(path string, store *OLCRTCStore) error {
+	if path == "" || store == nil || len(store.Options) == 0 {
+		return nil
+	}
+	b, err := json.MarshalIndent(store, "", "  ")
 	if err != nil {
 		return err
 	}

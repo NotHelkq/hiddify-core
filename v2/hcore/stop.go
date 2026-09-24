@@ -21,6 +21,7 @@ func Stop() (coreResponse *CoreInfoResponse, err error) {
 	if olcrtc.IsRunning() {
 		olcrtc.Stop()
 	}
+	activeRunningOLCRTCOpt = nil
 
 	static.lock.Lock()
 	defer static.lock.Unlock()
