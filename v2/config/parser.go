@@ -112,9 +112,6 @@ func parseConfigContent(ctx context.Context, content []byte, debug bool, configO
 		olcrtcOpt, err := ParseOLCRTCURI(strContent)
 		if err == nil {
 			ActiveOLCRTCOptions = olcrtcOpt
-			if opt != nil && opt.Path != "" {
-				_ = SaveOLCRTCOptions(opt.Path, olcrtcOpt)
-			}
 			return patchConfigStr(ctx, olcrtcOpt.ToSingboxJSON(), "OLCRTCParser", configOpt)
 		}
 		return nil, fmt.Errorf("olcrtc parser error: %w", err)
