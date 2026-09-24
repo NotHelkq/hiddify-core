@@ -31,8 +31,8 @@ func (r *Rule) MakeRule() (option.Rule, bool) {
 		if strings.HasPrefix(itemLower, "geosite:spotify") || itemLower == "spotify" {
 			raw.DomainSuffix = append(raw.DomainSuffix, "spotify.com", "scdn.co", "spoti.fi", "spotifycdn.com", "spotifycdn.net")
 		} else if strings.HasPrefix(itemLower, "geosite:category-ru") || itemLower == "category-ru" {
-			raw.DomainRegex = append(raw.DomainRegex, `.*\.ru$`, `.*\.xn--p1ai$`)
-			raw.DomainSuffix = append(raw.DomainSuffix, ".ru", ".su", ".xn--p1ai", "yandex.ru", "ya.ru", "vk.com", "vk.me", "ok.ru", "mail.ru", "gosuslugi.ru", "avito.ru", "avito.st", "tinkoff.ru", "t-bank.ru", "sberbank.ru", "ozon.ru", "wildberries.ru", "rutube.ru", "dzen.ru")
+			raw.DomainRegex = append(raw.DomainRegex, `.*\.ru$`, `.*\.xn--p1ai$`, `.*\.su$`)
+			raw.DomainSuffix = append(raw.DomainSuffix, "ru", ".ru", "su", ".su", "xn--p1ai", ".xn--p1ai", "yandex.ru", "ya.ru", "vk.com", "vk.me", "ok.ru", "mail.ru", "gosuslugi.ru", "avito.ru", "avito.st", "tinkoff.ru", "t-bank.ru", "sberbank.ru", "ozon.ru", "wildberries.ru", "rutube.ru", "dzen.ru")
 		} else if strings.HasPrefix(item, "geosite:") {
 			tag := "geosite-" + strings.TrimPrefix(item, "geosite:")
 			raw.RuleSet = append(raw.RuleSet, tag)
@@ -140,8 +140,8 @@ func (r *Rule) MakeDNSRule() (option.DefaultDNSRule, bool) {
 		if strings.HasPrefix(itemLower, "geosite:spotify") || itemLower == "spotify" {
 			raw.DomainSuffix = append(raw.DomainSuffix, "spotify.com", "scdn.co", "spoti.fi", "spotifycdn.com", "spotifycdn.net")
 		} else if strings.HasPrefix(itemLower, "geosite:category-ru") || itemLower == "category-ru" {
-			raw.DomainRegex = append(raw.DomainRegex, `.*\.ru$`, `.*\.xn--p1ai$`)
-			raw.DomainSuffix = append(raw.DomainSuffix, ".ru", ".su", ".xn--p1ai", "yandex.ru", "ya.ru", "vk.com", "vk.me", "ok.ru", "mail.ru", "gosuslugi.ru", "avito.ru", "avito.st", "tinkoff.ru", "t-bank.ru", "sberbank.ru", "ozon.ru", "wildberries.ru", "rutube.ru", "dzen.ru")
+			raw.DomainRegex = append(raw.DomainRegex, `.*\.ru$`, `.*\.xn--p1ai$`, `.*\.su$`)
+			raw.DomainSuffix = append(raw.DomainSuffix, "ru", ".ru", "su", ".su", "xn--p1ai", ".xn--p1ai", "yandex.ru", "ya.ru", "vk.com", "vk.me", "ok.ru", "mail.ru", "gosuslugi.ru", "avito.ru", "avito.st", "tinkoff.ru", "t-bank.ru", "sberbank.ru", "ozon.ru", "wildberries.ru", "rutube.ru", "dzen.ru")
 		} else if strings.HasPrefix(item, "geosite:") {
 			tag := "geosite-" + strings.TrimPrefix(item, "geosite:")
 			raw.RuleSet = append(raw.RuleSet, tag)

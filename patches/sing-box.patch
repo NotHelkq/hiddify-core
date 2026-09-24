@@ -1,3 +1,48 @@
+diff --git a/experimental/libbox/service.go b/experimental/libbox/service.go
+index 0aaa51a5..ac74f536 100644
+--- a/experimental/libbox/service.go
++++ b/experimental/libbox/service.go
+@@ -132,7 +132,12 @@ func (w *platformInterfaceWrapper) NetworkInterfaces() ([]adapter.NetworkInterfa
+ 				Index:     int(netInterface.Index),
+ 				MTU:       int(netInterface.MTU),
+ 				Name:      netInterface.Name,
+-				Addresses: common.Map(iteratorToArray[string](netInterface.Addresses), netip.MustParsePrefix),
++				Addresses: common.FlatMap(iteratorToArray[string](netInterface.Addresses), func(it string) []netip.Prefix {
++					if prefix, err := netip.ParsePrefix(it); err == nil {
++						return []netip.Prefix{prefix}
++					}
++					return nil
++				}),
+ 				Flags:     linkFlags(uint32(netInterface.Flags)),
+ 			},
+ 			Type:        C.InterfaceType(netInterface.Type),
+@@ -212,7 +217,7 @@ func (w *platformInterfaceWrapper) FindConnectionOwner(request *adapter.FindConn
+ 	}
+ 
+ 	result, err := w.iif.FindConnectionOwner(request.IpProtocol, request.SourceAddress, request.SourcePort, request.DestinationAddress, request.DestinationPort)
+-	if err != nil {
++	if err != nil || result == nil {
+ 		return nil, err
+ 	}
+ 	return &adapter.ConnectionOwner{
+diff --git a/option/v2ray_transport.go b/option/v2ray_transport.go
+index 3e2f3c2e..42d25519 100644
+--- a/option/v2ray_transport.go
++++ b/option/v2ray_transport.go
+@@ -199,7 +199,12 @@ func checkV2RayXHTTPBaseOptions(mode string, options *V2RayXHTTPBaseOptions) err
+ 		}
+ 	}
+ 	if options.XPaddingBytes.From <= 0 || options.XPaddingBytes.To <= 0 {
+-		return E.New("xPaddingBytes cannot be disabled")
++		options.XPaddingBytes = Xbadoption.Range{
++			From: 100,
++			To:   1000,
++		}
++	} else if options.XPaddingBytes.From > options.XPaddingBytes.To {
++		options.XPaddingBytes.From, options.XPaddingBytes.To = options.XPaddingBytes.To, options.XPaddingBytes.From
+ 	}
+ 	if options.XPaddingKey == "" {
+ 		options.XPaddingKey = "x_padding"
 diff --git a/protocol/hysteria2/outbound.go b/protocol/hysteria2/outbound.go
 index 7651a0c6..47441d48 100644
 --- a/protocol/hysteria2/outbound.go
@@ -76,21 +121,17 @@ index 438c6fbd..68522742 100644
  	}
  	if len(options.SourceIPCIDR) > 0 {
  		item, err := NewIPCIDRItem(true, options.SourceIPCIDR)
-diff --git a/option/v2ray_transport.go b/option/v2ray_transport.go
-index 3e2f3c2e..42d25519 100644
---- a/option/v2ray_transport.go
-+++ b/option/v2ray_transport.go
-@@ -199,7 +199,12 @@ func checkV2RayXHTTPBaseOptions(mode string, options *V2RayXHTTPBaseOptions) err
+diff --git a/route/rule/rule_item_rule_set.go b/route/rule/rule_item_rule_set.go
+index 01364943..236a62b4 100644
+--- a/route/rule/rule_item_rule_set.go
++++ b/route/rule/rule_item_rule_set.go
+@@ -33,8 +33,7 @@ func (r *RuleSetItem) Start() error {
+ 	for _, tag := range r.tagList {
+ 		ruleSet, loaded := r.router.RuleSet(tag)
+ 		if !loaded {
+-			_ = r.Close()
+-			return E.New("rule-set not found: ", tag)
++			continue
  		}
- 	}
- 	if options.XPaddingBytes.From <= 0 || options.XPaddingBytes.To <= 0 {
--		return E.New("xPaddingBytes cannot be disabled")
-+		options.XPaddingBytes = Xbadoption.Range{
-+			From: 100,
-+			To:   1000,
-+		}
-+	} else if options.XPaddingBytes.From > options.XPaddingBytes.To {
-+		options.XPaddingBytes.From, options.XPaddingBytes.To = options.XPaddingBytes.To, options.XPaddingBytes.From
- 	}
- 	if options.XPaddingKey == "" {
- 		options.XPaddingKey = "x_padding"
+ 		ruleSet.IncRef()
+ 		r.setList = append(r.setList, ruleSet)
