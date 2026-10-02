@@ -259,7 +259,7 @@ func setOutbounds(options *option.Options, input *option.Options, opt *HiddifyOp
 		if opt.ConnectionTestUrl != "" {
 			opt.ConnectionTestUrls = []string{opt.ConnectionTestUrl}
 		} else {
-			opt.ConnectionTestUrls = []string{"http://www.gstatic.com/generate_204", "http://cp.cloudflare.com/generate_204"}
+			opt.ConnectionTestUrls = []string{"http://cp.cloudflare.com/generate_204"}
 		}
 	}
 	// urlTest := option.Outbound{
@@ -393,7 +393,7 @@ func setExperimental(options *option.Options, hopt *HiddifyOptions) {
 		if hopt.ConnectionTestUrl != "" {
 			hopt.ConnectionTestUrls = []string{hopt.ConnectionTestUrl}
 		} else {
-			hopt.ConnectionTestUrls = []string{"http://www.gstatic.com/generate_204", "http://cp.cloudflare.com/generate_204"}
+			hopt.ConnectionTestUrls = []string{"http://cp.cloudflare.com/generate_204"}
 		}
 	}
 	if hopt.EnableClashApi {
