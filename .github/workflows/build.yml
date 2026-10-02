@@ -606,15 +606,11 @@ jobs:
           deleteOnlyFromDrafts: false
 
       - name: Create or Update Draft Release
-        uses: softprops/action-gh-release@v1
         if: ${{ success() }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: ./bin/*.tar.gz
-          name: 'draft'
-          tag_name: 'draft'
-          prerelease: true
+        run: |
+          gh release upload draft ./bin/*.tar.gz --clobber || gh release create draft ./bin/*.tar.gz --prerelease --title "draft"
 
   upload-release:
     permissions: write-all
