@@ -348,6 +348,36 @@ func (h *HiddifyInstance) UrlTest(in *UrlTestRequest) (*hcommon.Response, error)
 		return nil, E.New("service not ready")
 	}
 	monitor := monitoring.Get(h.Context())
+	if monitor == nil {
+		return nil, E.New("monitor not ready")
+	}
+
+	if outboundGroup, ok := box.Outbound().Outbound(in.Tag); ok {
+		if grp, isGrp := outboundGroup.(adapter.OutboundGroup); isGrp {
+			go func() {
+				for _, item := range grp.All() {
+					monitor.TestNow(item)
+				}
+			}()
+			return &hcommon.Response{
+				Code:    hcommon.ResponseCode_OK,
+				Message: "",
+			}, nil
+		}
+	}
+
+	if in.Tag == "all" {
+		go func() {
+			for _, detour := range box.Outbound().Outbounds() {
+				monitor.TestNow(detour.Tag())
+			}
+		}()
+		return &hcommon.Response{
+			Code:    hcommon.ResponseCode_OK,
+			Message: "",
+		}, nil
+	}
+
 	monitor.TestNow(in.Tag)
 	// router := box.Outbound()
 	// abstractOutboundGroup, isLoaded := router.Outbound(groupTag)
