@@ -610,7 +610,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload draft ./bin/*.tar.gz --clobber || gh release create draft ./bin/*.tar.gz --prerelease --title "draft"
+          gh release upload draft ./bin/*.tar.gz --clobber --repo ${{ github.repository }} || gh release create draft ./bin/*.tar.gz --prerelease --title "draft" --repo ${{ github.repository }}
 
   upload-release:
     permissions: write-all
