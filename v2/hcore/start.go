@@ -115,6 +115,9 @@ func StartService(ctx context.Context, in *StartRequest) (coreResponse *CoreInfo
 	}
 	saveLastStartRequest(in)
 
+	// Load and register all olcRTC options from sidecar file or config content
+	_ = config.DetectOLCRTCOptions(in.ConfigContent, in.ConfigPath)
+
 	// Determine if the actively selected outbound is olcRTC
 	var initialOLCRTCOpt *config.OLCRTCOptions
 	var selectedTag string

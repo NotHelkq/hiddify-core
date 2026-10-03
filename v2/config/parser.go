@@ -175,6 +175,7 @@ func parseSubscription(ctx context.Context, content []byte, configOpt *HiddifyOp
 			"server":      "127.0.0.1",
 			"server_port": port,
 			"version":     "5",
+			"_olcrtc":     opt,
 		}
 		olcOutboundsJSON = append(olcOutboundsJSON, socksMap)
 

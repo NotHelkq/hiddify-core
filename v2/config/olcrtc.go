@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,22 +43,64 @@ var (
 )
 
 func RegisterOLCRTCOption(tag string, opt *OLCRTCOptions) {
+	if opt == nil {
+		return
+	}
 	registryMu.Lock()
 	defer registryMu.Unlock()
+	clean := strings.TrimSpace(strings.Split(tag, "§")[0])
+	noHash := strings.TrimLeft(clean, "# ")
 	RegisteredOLCRTCOptions[tag] = opt
-	RegisteredOLCRTCOptions[strings.TrimSpace(strings.Split(tag, "§")[0])] = opt
+	RegisteredOLCRTCOptions[clean] = opt
+	RegisteredOLCRTCOptions[noHash] = opt
+	RegisteredOLCRTCOptions[strings.ToLower(tag)] = opt
+	RegisteredOLCRTCOptions[strings.ToLower(clean)] = opt
+	RegisteredOLCRTCOptions[strings.ToLower(noHash)] = opt
+	if opt.Provider != "" {
+		RegisteredOLCRTCOptions[strings.ToLower(opt.Provider)] = opt
+	}
+	if opt.Name != "" {
+		RegisteredOLCRTCOptions[opt.Name] = opt
+		cleanName := strings.TrimSpace(strings.Split(opt.Name, "§")[0])
+		noHashName := strings.TrimLeft(cleanName, "# ")
+		RegisteredOLCRTCOptions[cleanName] = opt
+		RegisteredOLCRTCOptions[noHashName] = opt
+		RegisteredOLCRTCOptions[strings.ToLower(opt.Name)] = opt
+		RegisteredOLCRTCOptions[strings.ToLower(noHashName)] = opt
+	}
 }
 
 func GetOLCRTCOption(tag string) *OLCRTCOptions {
 	registryMu.RLock()
 	defer registryMu.RUnlock()
 	cleanTag := strings.TrimSpace(strings.Split(tag, "§")[0])
+	noHash := strings.TrimLeft(cleanTag, "# ")
+	lowerTag := strings.ToLower(cleanTag)
+	lowerNoHash := strings.ToLower(noHash)
+
 	if opt, ok := RegisteredOLCRTCOptions[tag]; ok {
 		return opt
 	}
 	if opt, ok := RegisteredOLCRTCOptions[cleanTag]; ok {
 		return opt
 	}
+	if opt, ok := RegisteredOLCRTCOptions[noHash]; ok {
+		return opt
+	}
+	if opt, ok := RegisteredOLCRTCOptions[lowerTag]; ok {
+		return opt
+	}
+	if opt, ok := RegisteredOLCRTCOptions[lowerNoHash]; ok {
+		return opt
+	}
+
+	for k, opt := range RegisteredOLCRTCOptions {
+		lk := strings.ToLower(k)
+		if lk == lowerTag || lk == lowerNoHash || strings.Contains(lowerTag, lk) || (len(lk) > 4 && strings.Contains(lk, lowerNoHash)) {
+			return opt
+		}
+	}
+
 	if ActiveOLCRTCStore != nil {
 		if opt, ok := ActiveOLCRTCStore.Options[tag]; ok {
 			return opt
@@ -65,9 +108,37 @@ func GetOLCRTCOption(tag string) *OLCRTCOptions {
 		if opt, ok := ActiveOLCRTCStore.Options[cleanTag]; ok {
 			return opt
 		}
+		if opt, ok := ActiveOLCRTCStore.Options[noHash]; ok {
+			return opt
+		}
+		for k, opt := range ActiveOLCRTCStore.Options {
+			lk := strings.ToLower(k)
+			if lk == lowerTag || lk == lowerNoHash || strings.Contains(lowerTag, lk) || (len(lk) > 4 && strings.Contains(lk, lowerNoHash)) {
+				return opt
+			}
+		}
 	}
+
+	for _, provider := range []string{"wbstream", "telemost", "jitsi"} {
+		if strings.Contains(lowerTag, provider) {
+			if opt, ok := RegisteredOLCRTCOptions[provider]; ok {
+				return opt
+			}
+			if ActiveOLCRTCStore != nil {
+				for _, opt := range ActiveOLCRTCStore.Options {
+					if strings.EqualFold(opt.Provider, provider) {
+						return opt
+					}
+				}
+			}
+		}
+	}
+
 	if ActiveOLCRTCOptions != nil {
-		if ActiveOLCRTCOptions.Name == tag || ActiveOLCRTCOptions.Name == cleanTag {
+		if ActiveOLCRTCOptions.Name == tag || ActiveOLCRTCOptions.Name == cleanTag || ActiveOLCRTCOptions.Name == noHash {
+			return ActiveOLCRTCOptions
+		}
+		if strings.Contains(lowerTag, "olcrtc") || strings.Contains(lowerTag, "olconnect") || strings.Contains(lowerTag, "whitelist") {
 			return ActiveOLCRTCOptions
 		}
 	}
@@ -78,6 +149,9 @@ func IsOLCRTCTag(tag string) bool {
 	cleanTag := strings.TrimSpace(strings.Split(tag, "§")[0])
 	cleanLower := strings.ToLower(cleanTag)
 	if strings.Contains(cleanLower, "olcrtc") || strings.Contains(cleanLower, "olconnect") {
+		return true
+	}
+	if strings.Contains(cleanLower, "wbstream") || strings.Contains(cleanLower, "telemost") || strings.Contains(cleanLower, "jitsi") {
 		return true
 	}
 	return GetOLCRTCOption(tag) != nil
@@ -289,6 +363,30 @@ func DetectOLCRTCOptions(content string, path string) *OLCRTCOptions {
 				return &singleOpt
 			}
 		}
+
+		// Also check sibling .olcrtc files in the same directory
+		dir := filepath.Dir(path)
+		if matches, err := filepath.Glob(filepath.Join(dir, "*.olcrtc")); err == nil {
+			for _, match := range matches {
+				if data, err := os.ReadFile(match); err == nil {
+					var store OLCRTCStore
+					if err := json.Unmarshal(data, &store); err == nil && len(store.Options) > 0 {
+						for tag, opt := range store.Options {
+							RegisterOLCRTCOption(tag, opt)
+						}
+						if ActiveOLCRTCStore == nil {
+							ActiveOLCRTCStore = &store
+						}
+						if ActiveOLCRTCOptions == nil {
+							for _, opt := range store.Options {
+								ActiveOLCRTCOptions = opt
+								break
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	// 2. Check content (may be base64 or multi-line containing olcrtc:// links)
@@ -308,9 +406,6 @@ func DetectOLCRTCOptions(content string, path string) *OLCRTCOptions {
 			line := strings.TrimSpace(rawLine)
 			if isOLCRTCUri(line) {
 				if opt, err := ParseOLCRTCURI(line); err == nil {
-					if opt.SocksPort <= 0 {
-						opt.SocksPort = basePort + i
-					}
 					tag := opt.Name
 					if tag == "" {
 						tag = fmt.Sprintf("olcRTC %s", opt.Provider)
@@ -348,6 +443,39 @@ func DetectOLCRTCOptions(content string, path string) *OLCRTCOptions {
 							ActiveOLCRTCOptions = &opt
 							return &opt
 						}
+					}
+				}
+				if obs, ok := raw["outbounds"].([]interface{}); ok {
+					store := &OLCRTCStore{Options: make(map[string]*OLCRTCOptions)}
+					for _, ob := range obs {
+						if obMap, ok := ob.(map[string]interface{}); ok {
+							if olcData, ok := obMap["_olcrtc"]; ok {
+								if b, err := json.Marshal(olcData); err == nil {
+									var opt OLCRTCOptions
+									if err := json.Unmarshal(b, &opt); err == nil && opt.RoomID != "" {
+										tag := opt.Name
+										if tag == "" {
+											if t, ok := obMap["tag"].(string); ok {
+												tag = t
+											}
+										}
+										store.Options[tag] = &opt
+										RegisterOLCRTCOption(tag, &opt)
+										if store.Active == "" {
+											store.Active = tag
+											ActiveOLCRTCOptions = &opt
+										}
+									}
+								}
+							}
+						}
+					}
+					if len(store.Options) > 0 {
+						ActiveOLCRTCStore = store
+						if path != "" {
+							_ = SaveOLCRTCStore(path, store)
+						}
+						return ActiveOLCRTCOptions
 					}
 				}
 			}

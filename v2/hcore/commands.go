@@ -240,10 +240,17 @@ func (h *HiddifyInstance) SelectOutbound(in *SelectOutboundRequest) (*hcommon.Re
 			}, E.New("outbound is not a selector: ", in.GroupTag)
 		}
 		if !selector.SelectOutbound(in.OutboundTag) {
-			return &hcommon.Response{
-				Code:    hcommon.ResponseCode_FAILED,
-				Message: E.New("outbound not found in selector:: ", in.GroupTag).Error(),
-			}, E.New("outbound not found in selector: ", in.GroupTag)
+			altTag := strings.TrimLeft(in.OutboundTag, "# ")
+			if altTag == in.OutboundTag {
+				altTag = "#" + in.OutboundTag
+			}
+			if !selector.SelectOutbound(altTag) {
+				return &hcommon.Response{
+					Code:    hcommon.ResponseCode_FAILED,
+					Message: E.New("outbound not found in selector: ", in.GroupTag).Error(),
+				}, E.New("outbound not found in selector: ", in.GroupTag)
+			}
+			in.OutboundTag = altTag
 		}
 		if opt := config.GetOLCRTCOption(in.OutboundTag); opt != nil {
 			go func() {
