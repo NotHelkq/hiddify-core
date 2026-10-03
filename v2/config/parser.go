@@ -141,7 +141,6 @@ func parseSubscription(ctx context.Context, content []byte, configOpt *HiddifyOp
 	// Case 2: One or more olcRTC lines found!
 	store := &OLCRTCStore{Options: make(map[string]*OLCRTCOptions)}
 	var olcOutbounds []option.Outbound
-	var olcOutboundsJSON []map[string]interface{}
 	basePort := 10808
 
 	for i, line := range olcrtcLines {
@@ -169,21 +168,19 @@ func parseSubscription(ctx context.Context, content []byte, configOpt *HiddifyOp
 		}
 		RegisterOLCRTCOption(tag, opt)
 
-		socksMap := map[string]interface{}{
-			"type":        "socks",
-			"tag":         tag,
-			"server":      "127.0.0.1",
-			"server_port": port,
-			"version":     "5",
-			"_olcrtc":     opt,
+		socksOpts := option.SOCKSOutboundOptions{
+			ServerOptions: option.ServerOptions{
+				Server:     "127.0.0.1",
+				ServerPort: uint16(port),
+			},
+			Version: "5",
 		}
-		olcOutboundsJSON = append(olcOutboundsJSON, socksMap)
-
-		var ob option.Outbound
-		b, _ := json.Marshal(socksMap)
-		if err := ob.UnmarshalJSONContext(ctx, b); err == nil {
-			olcOutbounds = append(olcOutbounds, ob)
+		ob := option.Outbound{
+			Type:    "socks",
+			Tag:     tag,
+			Options: &socksOpts,
 		}
+		olcOutbounds = append(olcOutbounds, ob)
 	}
 
 	if len(store.Options) > 0 {
@@ -200,13 +197,12 @@ func parseSubscription(ctx context.Context, content []byte, configOpt *HiddifyOp
 		}
 	}
 
-	// Sub-case 2b: Pure olcRTC subscription (or ray2sing produced no outbounds)
-	if len(olcOutboundsJSON) > 0 {
-		res := map[string]interface{}{
-			"outbounds": olcOutboundsJSON,
+	// Sub-case 2b: Pure olcRTC subscription (or single olcRTC config)
+	if len(olcOutbounds) > 0 {
+		v2ray := &option.Options{
+			Outbounds: olcOutbounds,
 		}
-		b, _ := json.Marshal(res)
-		return patchConfigStr(ctx, b, "OLCRTCParser", configOpt)
+		return patchConfigOptions(ctx, v2ray, "OLCRTCParser", configOpt)
 	}
 
 	return nil, fmt.Errorf("failed to parse subscription with olcrtc")

@@ -12,6 +12,13 @@ func HysteriaSingbox(hysteriaURL string) (*T.Outbound, error) {
 		return nil, err
 	}
 	SNI := u.Params["peer"]
+	if SNI == "" {
+		SNI = u.Params["sni"]
+	}
+	if SNI == "" {
+		SNI = u.Hostname
+	}
+	insecure := u.Params["insecure"] == "1" || u.Params["insecure"] == "true" || u.Params["allowinsecure"] == "1" || isIPOnly(SNI) || isIPOnly(u.Hostname)
 	opts := T.HysteriaOutboundOptions{
 		ServerOptions: u.GetServerOption(),
 		OutboundTLSOptionsContainer: T.OutboundTLSOptionsContainer{
@@ -19,7 +26,7 @@ func HysteriaSingbox(hysteriaURL string) (*T.Outbound, error) {
 				Enabled:    true,
 				DisableSNI: isIPOnly(SNI),
 				ServerName: SNI,
-				Insecure:   u.Params["insecure"] == "1",
+				Insecure:   insecure,
 			},
 		},
 	}
@@ -41,10 +48,13 @@ func HysteriaSingbox(hysteriaURL string) (*T.Outbound, error) {
 		opts.DownMbps = downMbps
 	}
 
-	opts.Obfs = u.Params["obfsParam"]
-	// opts.TurnRelay, err = u.GetRelayOptions()
-	if err != nil {
-		return nil, err
+	obfs := u.Params["obfs"]
+	if obfs == "" {
+		obfs = u.Params["obfsparam"]
 	}
+	if obfs == "" {
+		obfs = u.Params["obfsParam"]
+	}
+	opts.Obfs = obfs
 	return singOut, nil
 }

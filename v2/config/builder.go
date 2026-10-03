@@ -259,7 +259,12 @@ func setOutbounds(options *option.Options, input *option.Options, opt *HiddifyOp
 		if opt.ConnectionTestUrl != "" {
 			opt.ConnectionTestUrls = []string{opt.ConnectionTestUrl}
 		} else {
-			opt.ConnectionTestUrls = []string{"http://cp.cloudflare.com/generate_204"}
+			opt.ConnectionTestUrls = []string{"http://www.gstatic.com/generate_204"}
+		}
+	}
+	for i, u := range opt.ConnectionTestUrls {
+		if strings.Contains(u, "cp.cloudflare.com") || strings.Contains(u, "captive.apple.com") {
+			opt.ConnectionTestUrls[i] = "http://www.gstatic.com/generate_204"
 		}
 	}
 	// urlTest := option.Outbound{
@@ -393,7 +398,12 @@ func setExperimental(options *option.Options, hopt *HiddifyOptions) {
 		if hopt.ConnectionTestUrl != "" {
 			hopt.ConnectionTestUrls = []string{hopt.ConnectionTestUrl}
 		} else {
-			hopt.ConnectionTestUrls = []string{"http://cp.cloudflare.com/generate_204"}
+			hopt.ConnectionTestUrls = []string{"http://www.gstatic.com/generate_204"}
+		}
+	}
+	for i, u := range hopt.ConnectionTestUrls {
+		if strings.Contains(u, "cp.cloudflare.com") || strings.Contains(u, "captive.apple.com") {
+			hopt.ConnectionTestUrls[i] = "http://www.gstatic.com/generate_204"
 		}
 	}
 	if hopt.EnableClashApi {
@@ -450,10 +460,18 @@ func setInbound(options *option.Options, hopt *HiddifyOptions) {
 	// }
 	ipv6Enable := isIPv6Supported()
 	if hopt.EnableTun {
+		tunMTU := hopt.MTU
+		if C.IsAndroid || C.IsIos {
+			if tunMTU == 0 || tunMTU > 1500 {
+				tunMTU = 1400
+			}
+		} else if tunMTU == 0 {
+			tunMTU = 1400
+		}
 
 		opts := option.TunInboundOptions{
 			Stack:       hopt.TUNStack,
-			MTU:         hopt.MTU,
+			MTU:         tunMTU,
 			AutoRoute:   true,
 			StrictRoute: hopt.StrictRoute,
 

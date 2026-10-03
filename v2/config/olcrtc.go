@@ -183,6 +183,11 @@ func ParseOLCRTCURI(uriStr string) (*OLCRTCOptions, error) {
 	if roomID == "room" {
 		roomID = strings.Trim(u.Path, "/")
 	}
+	if strings.HasPrefix(roomID, "https:/") && !strings.HasPrefix(roomID, "https://") {
+		roomID = "https://" + strings.TrimPrefix(roomID, "https:/")
+	} else if strings.HasPrefix(roomID, "http:/") && !strings.HasPrefix(roomID, "http://") {
+		roomID = "http://" + strings.TrimPrefix(roomID, "http:/")
+	}
 	opts.RoomID = roomID
 
 	if u.User != nil && u.User.Username() != "" {
@@ -197,9 +202,9 @@ func ParseOLCRTCURI(uriStr string) (*OLCRTCOptions, error) {
 		opts.Provider = "wbstream"
 	}
 
-	opts.KeyHex = q.Get("key")
+	opts.KeyHex = strings.TrimSpace(q.Get("key"))
 	if opts.KeyHex == "" {
-		opts.KeyHex = q.Get("k")
+		opts.KeyHex = strings.TrimSpace(q.Get("k"))
 	}
 
 	opts.ClientID = q.Get("client_id")
@@ -258,8 +263,9 @@ func ParseOLCRTCURI(uriStr string) (*OLCRTCOptions, error) {
 			frag = unescaped
 		}
 	}
-	if frag != "" {
-		opts.Name = frag
+	cleanFrag := strings.TrimLeft(frag, "# ")
+	if cleanFrag != "" {
+		opts.Name = cleanFrag
 	} else {
 		opts.Name = fmt.Sprintf("olcRTC %s", opts.Provider)
 	}
@@ -275,11 +281,12 @@ func (opts *OLCRTCOptions) Validate() error {
 	if opts.RoomID == "" {
 		return fmt.Errorf("olcRTC: room_id is required")
 	}
+	opts.KeyHex = strings.TrimSpace(opts.KeyHex)
 	if opts.KeyHex == "" {
 		return fmt.Errorf("olcRTC: key_hex is required")
 	}
 	if len(opts.KeyHex) != 64 {
-		return fmt.Errorf("olcRTC: key_hex must be 64 hex characters")
+		return fmt.Errorf("olcRTC: key_hex must be 64 hex characters, got %d", len(opts.KeyHex))
 	}
 	if _, err := hex.DecodeString(opts.KeyHex); err != nil {
 		return fmt.Errorf("olcRTC: key_hex is not valid hex: %w", err)

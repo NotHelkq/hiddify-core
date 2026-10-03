@@ -13,9 +13,19 @@ func Hysteria2Singbox(hysteria2Url string) (*T.Outbound, error) {
 	var ObfsOpts *T.Hysteria2Obfs
 	ObfsOpts = nil
 	if obfs, ok := decoded["obfs"]; ok && obfs != "" {
+		pass := decoded["obfs-password"]
+		if pass == "" {
+			pass = decoded["obfspassword"]
+		}
+		if pass == "" {
+			pass = decoded["obfs_password"]
+		}
+		if pass == "" {
+			pass = decoded["obfsparam"]
+		}
 		ObfsOpts = &T.Hysteria2Obfs{
 			Type:     obfs,
-			Password: decoded["obfs-password"],
+			Password: pass,
 		}
 	}
 
@@ -33,6 +43,10 @@ func Hysteria2Singbox(hysteria2Url string) (*T.Outbound, error) {
 	if SNI == "" {
 		SNI = decoded["hostname"]
 	}
+	if SNI == "" {
+		SNI = u.Hostname
+	}
+	insecure := decoded["insecure"] == "1" || decoded["insecure"] == "true" || decoded["allowinsecure"] == "1" || isIPOnly(SNI) || isIPOnly(u.Hostname)
 	// turnRelay, err := u.GetRelayOptions()
 	// if err != nil {
 	// 	return nil, err
@@ -51,7 +65,7 @@ func Hysteria2Singbox(hysteria2Url string) (*T.Outbound, error) {
 			OutboundTLSOptionsContainer: T.OutboundTLSOptionsContainer{
 				TLS: &T.OutboundTLSOptions{
 					Enabled:    true,
-					Insecure:   decoded["insecure"] == "1",
+					Insecure:   insecure,
 					DisableSNI: isIPOnly(SNI),
 					ServerName: SNI,
 					ECH:        ECHOpts,

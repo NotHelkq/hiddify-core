@@ -32,6 +32,11 @@ func VlessSingbox(vlessURL string) (*T.Outbound, error) {
 		packetEncoding = "xudp"
 	}
 
+	flow := decoded["flow"]
+	if tlsOptions.TLS == nil {
+		flow = ""
+	}
+
 	return &T.Outbound{
 		Tag:  u.Name,
 		Type: "vless",
@@ -40,7 +45,7 @@ func VlessSingbox(vlessURL string) (*T.Outbound, error) {
 			ServerOptions:               u.GetServerOption(),
 			UUID:                        u.Username,
 			PacketEncoding:              &packetEncoding,
-			Flow:                        decoded["flow"],
+			Flow:                        flow,
 			OutboundTLSOptionsContainer: tlsOptions,
 			Transport:                   transportOptions,
 			Multiplex:                   getMuxOptions(decoded),

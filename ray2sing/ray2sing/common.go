@@ -56,11 +56,12 @@ func getTLSOptions(decoded map[string]string) T.OutboundTLSOptionsContainer {
 	if err != nil {
 		insecure = "false"
 	}
+	isInsecure := insecure == "true" || insecure == "1" || isIPOnly(serverName)
 	tlsOptions := &option.OutboundTLSOptions{
 		Enabled:    true,
 		ServerName: serverName,
-		Insecure:   insecure == "true" || insecure == "1",
-		DisableSNI: getOneOfN(decoded, "", "nosni") != "",
+		Insecure:   isInsecure,
+		DisableSNI: getOneOfN(decoded, "", "nosni") != "" || isIPOnly(serverName),
 		ECH:        ECHOpts,
 		// TLSTricks:  getTricksOptions(decoded),
 	}

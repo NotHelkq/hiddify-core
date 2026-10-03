@@ -138,6 +138,14 @@ func patchOutbound(base option.Outbound, configOpt HiddifyOptions, staticIPs *ma
 
 	base = patchOutboundTLSTricks(base, configOpt)
 
+	if base.Type == C.TypeVLESS {
+		if opts, ok := base.Options.(*option.VLESSOutboundOptions); ok {
+			if opts.TLS == nil {
+				opts.Flow = ""
+			}
+		}
+	}
+
 	// switch base.Type {
 	// case C.TypeVMess, C.TypeVLESS, C.TypeTrojan, C.TypeShadowsocks:
 	// 	obj = patchOutboundMux(base, configOpt, obj)

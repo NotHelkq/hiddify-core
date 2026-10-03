@@ -45,16 +45,20 @@ func ParseUrl(inputURL string, defaultPort uint16) (*UrlSchema, error) {
 		}
 	}
 
+	username := ""
+	if parsedURL.User != nil {
+		username = parsedURL.User.Username()
+	}
 	data := &UrlSchema{
 		Scheme:   parsedURL.Scheme,
-		Username: parsedURL.User.Username(),
+		Username: username,
 		Password: getPassword(parsedURL),
 		Hostname: parsedURL.Hostname(),
 		Port:     port,
 		Name:     frag,
 		Params:   make(map[string]string),
 	}
-	if isBase64CharsOnly(data.Username) {
+	if (data.Scheme == "ss" || data.Scheme == "shadowsocks") && isBase64CharsOnly(data.Username) {
 		userInfo, err := decodeBase64IfNeeded(data.Username)
 
 		// fmt.Print(userInfo)
@@ -85,8 +89,10 @@ func normalizeStr(ss string) string {
 }
 
 func getPassword(u *url.URL) string {
-	if password, ok := u.User.Password(); ok {
-		return password
+	if u.User != nil {
+		if password, ok := u.User.Password(); ok {
+			return password
+		}
 	}
 	return ""
 }
