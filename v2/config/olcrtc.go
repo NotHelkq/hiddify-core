@@ -401,7 +401,6 @@ func DetectOLCRTCOptions(content string, path string) *OLCRTCOptions {
 		decoded := TryDecodeSubscription(sourceContent)
 		lines := strings.Split(strings.ReplaceAll(decoded, "\r\n", "\n"), "\n")
 		store := &OLCRTCStore{Options: make(map[string]*OLCRTCOptions)}
-		basePort := 10808
 		for i, rawLine := range lines {
 			line := strings.TrimSpace(rawLine)
 			if isOLCRTCUri(line) {
