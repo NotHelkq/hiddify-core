@@ -22,6 +22,19 @@ func ShadowsocksSingbox(shadowsocksUrl string) (*T.Outbound, error) {
 	}
 	
 
+	plugin := decoded["plugin"]
+	pluginOpts := decoded["pluginopts"]
+	if pluginOpts == "" {
+		pluginOpts = decoded["plugin-opts"]
+	}
+	if strings.Contains(plugin, ";") {
+		parts := strings.SplitN(plugin, ";", 2)
+		plugin = parts[0]
+		if pluginOpts == "" {
+			pluginOpts = parts[1]
+		}
+	}
+
 	result := T.Outbound{
 		Type: "shadowsocks",
 		Tag:  u.Name,
@@ -29,8 +42,8 @@ func ShadowsocksSingbox(shadowsocksUrl string) (*T.Outbound, error) {
 			ServerOptions: u.GetServerOption(),
 			Method:        defaultMethod,
 			Password:      pass,
-			Plugin:        decoded["plugin"],
-			PluginOptions: decoded["pluginopts"],
+			Plugin:        plugin,
+			PluginOptions: pluginOpts,
 		},
 	}
 

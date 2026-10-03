@@ -15,11 +15,24 @@ func DnsttSingbox(vlessURL string) (*T.Outbound, error) {
 	// uot := T.UDPOverTCPOptions{
 	// 	Enabled: getOneOfN(decoded, "", "uot") != "false" && getOneOfN(decoded, "", "uot") != "0",
 	// }
+	pubKey := getOneOfN(decoded, "", "pubkey", "publickey", "serverpublickey")
+	if pubKey == "" {
+		pubKey = u.Username
+	}
+	domain := getOneOfN(decoded, "", "domain", "serveraddress", "address")
+	if domain == "" {
+		domain = u.Hostname
+	}
+	resolvers := strings.Split(getOneOfN(decoded, "", "resolver"), ",")
+	if len(resolvers) == 0 || (len(resolvers) == 1 && resolvers[0] == "") {
+		resolvers = []string{"1.1.1.1:53"}
+	}
+
 	d := &T.DnsttOptions{
 		DialerOptions: getDialerOptions(decoded),
-		PublicKey:     getOneOfN(decoded, "", "pubkey", "publickey", "serverpublickey"),
-		Domain:        getOneOfN(decoded, "", "domain", "serveraddress", "address"),
-		Resolvers:     strings.Split(getOneOfN(decoded, "", "resolver"), ","),
+		PublicKey:     pubKey,
+		Domain:        domain,
+		Resolvers:     resolvers,
 		// TunnelPerResolver: toInt(getOneOfN(decoded, "1", "tunnelperresolver")),
 
 		PreTestDomain:     getOneOfN(decoded, "", "pretest-domain"),
@@ -58,7 +71,7 @@ func DnsttSingbox(vlessURL string) (*T.Outbound, error) {
 		d.DnsttCompat = true
 	}
 	return &T.Outbound{
-		Tag:     u.Name + "§hide§",
+		Tag:     u.Name,
 		Type:    "dnstt",
 		Options: d,
 	}, nil

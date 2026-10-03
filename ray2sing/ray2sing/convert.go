@@ -47,6 +47,8 @@ var configTypes = map[string]ParserFunc{
 	"mierus://":  MieruSingbox,
 	"psiphon://": PsiphonSingbox,
 	"dnstt://":   DnsttSingbox,
+	"anytls://":  AnyTLSSingbox,
+	"snell://":   SnellSingbox,
 }
 var endpointParsers = map[string]EndpointParserFunc{
 	"wg://":        AWGSingbox,

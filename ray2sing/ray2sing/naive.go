@@ -21,6 +21,9 @@ func NaiveSingbox(vlessURL string) (*T.Outbound, error) {
 	// fmt.Printf("Port %v deco=%v", port, decoded)
 	tlsOptions := getTLSOptions(decoded)
 	if tlsOptions.TLS != nil {
+		tlsOptions.TLS.DisableSNI = false
+		tlsOptions.TLS.Insecure = false
+		tlsOptions.TLS.ALPN = nil
 		if security := decoded["security"]; security == "reality" {
 			tlsOptions.TLS.Reality = &T.OutboundRealityOptions{
 				Enabled:   true,

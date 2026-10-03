@@ -146,6 +146,16 @@ func patchOutbound(base option.Outbound, configOpt HiddifyOptions, staticIPs *ma
 		}
 	}
 
+	if base.Type == C.TypeNaive {
+		if opts, ok := base.Options.(*option.NaiveOutboundOptions); ok {
+			if opts.TLS != nil {
+				opts.TLS.DisableSNI = false
+				opts.TLS.Insecure = false
+				opts.TLS.ALPN = nil
+			}
+		}
+	}
+
 	// switch base.Type {
 	// case C.TypeVMess, C.TypeVLESS, C.TypeTrojan, C.TypeShadowsocks:
 	// 	obj = patchOutboundMux(base, configOpt, obj)
