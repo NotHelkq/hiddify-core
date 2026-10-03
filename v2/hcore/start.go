@@ -115,9 +115,32 @@ func StartService(ctx context.Context, in *StartRequest) (coreResponse *CoreInfo
 	}
 	saveLastStartRequest(in)
 
-	if olcrtcOpt := config.DetectOLCRTCOptions(in.ConfigContent, in.ConfigPath); olcrtcOpt != nil {
-		if err := SwitchOLCRTC(olcrtcOpt); err != nil {
-			return errorWrapper(MessageType_START_SERVICE, fmt.Errorf("failed to start olcrtc: %w", err))
+	// Determine if the actively selected outbound is olcRTC
+	var initialOLCRTCOpt *config.OLCRTCOptions
+	var selectedTag string
+	for _, ob := range options.Outbounds {
+		if ob.Tag == config.OutboundSelectTag {
+			if selOpt, ok := ob.Options.(*option.SelectorOutboundOptions); ok {
+				selectedTag = selOpt.Default
+			}
+			break
+		}
+	}
+	if selectedTag != "" && config.IsOLCRTCTag(selectedTag) {
+		initialOLCRTCOpt = config.GetOLCRTCOption(selectedTag)
+	}
+	if initialOLCRTCOpt == nil && len(options.Outbounds) > 0 {
+		if config.IsOLCRTCTag(options.Outbounds[0].Tag) {
+			initialOLCRTCOpt = config.GetOLCRTCOption(options.Outbounds[0].Tag)
+		}
+	}
+	if initialOLCRTCOpt == nil && config.ActiveOLCRTCStore != nil && len(options.Outbounds) <= 3 {
+		initialOLCRTCOpt = config.ActiveOLCRTCOptions
+	}
+
+	if initialOLCRTCOpt != nil {
+		if err := SwitchOLCRTC(initialOLCRTCOpt); err != nil {
+			Log(LogLevel_ERROR, LogType_CORE, "Failed to start initial olcRTC: ", err)
 		}
 	} else {
 		_ = SwitchOLCRTC(nil)
@@ -172,7 +195,13 @@ var (
 	olcrtcLock             sync.Mutex
 )
 
-func SwitchOLCRTC(opt *config.OLCRTCOptions) error {
+func SwitchOLCRTC(opt *config.OLCRTCOptions) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			Log(LogLevel_ERROR, LogType_CORE, fmt.Sprintf("SwitchOLCRTC recovered panic: %v", r))
+			err = fmt.Errorf("olcRTC switch panic: %v", r)
+		}
+	}()
 	olcrtcLock.Lock()
 	defer olcrtcLock.Unlock()
 

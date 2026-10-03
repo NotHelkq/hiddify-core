@@ -18,13 +18,15 @@ import (
 )
 
 func (h *HiddifyInstance) GetProxyInfo(url_test_history *adapter.URLTestHistory, detour adapter.Outbound) *OutboundInfo {
-	// historyStorage := h.UrlTestHistory()
-	// if historyStorage == nil {
-	// 	return nil
-	// }
-
+	if detour == nil {
+		return nil
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			Log(LogLevel_ERROR, LogType_CORE, fmt.Sprintf("GetProxyInfo recovered panic: %v", r))
+		}
+	}()
 	out := &OutboundInfo{}
-	// realTag := ""
 
 	out.Tag = detour.Tag()
 	out.Type = detour.DisplayType()
@@ -47,11 +49,7 @@ func (h *HiddifyInstance) GetProxyInfo(url_test_history *adapter.URLTestHistory,
 			}
 		}
 	}
-	// realTag = adapter.OutboundTag(detour)
 
-	// realTag = out.Tag
-
-	// url_test_history := historyStorage.LoadURLTestHistory(realTag)
 	if trafficManager := h.TrafficManager(); trafficManager != nil {
 		up, down := trafficManager.OutboundUsage(out.Tag)
 		out.Upload = up
@@ -86,6 +84,11 @@ func (h *HiddifyInstance) GetProxyInfo(url_test_history *adapter.URLTestHistory,
 }
 
 func (h *HiddifyInstance) GetAllProxiesInfo(hismap map[string]*adapter.URLTestHistory, onlyGroupitems bool) *OutboundGroupList {
+	defer func() {
+		if r := recover(); r != nil {
+			Log(LogLevel_ERROR, LogType_CORE, fmt.Sprintf("GetAllProxiesInfo recovered panic: %v", r))
+		}
+	}()
 	ctx, box := h.Context(), h.Box()
 	if ctx == nil || box == nil {
 		return nil
@@ -95,36 +98,44 @@ func (h *HiddifyInstance) GetAllProxiesInfo(hismap map[string]*adapter.URLTestHi
 	outbounds_converted := make(map[string]*OutboundInfo, 0)
 	var iGroups []adapter.OutboundGroup
 	for _, it := range box.Endpoint().Endpoints() {
-		his, _ := hismap[it.Tag()]
-		outbounds_converted[it.Tag()] = h.GetProxyInfo(his, it)
+		if it == nil {
+			continue
+		}
+		var his *adapter.URLTestHistory
+		if hismap != nil {
+			his = hismap[it.Tag()]
+		}
+		if pinfo := h.GetProxyInfo(his, it); pinfo != nil {
+			outbounds_converted[it.Tag()] = pinfo
+		}
 	}
 	for _, it := range box.Outbound().Outbounds() {
-		his, _ := hismap[it.Tag()]
-		outbounds_converted[it.Tag()] = h.GetProxyInfo(his, it)
+		if it == nil {
+			continue
+		}
+		var his *adapter.URLTestHistory
+		if hismap != nil {
+			his = hismap[it.Tag()]
+		}
+		if pinfo := h.GetProxyInfo(his, it); pinfo != nil {
+			outbounds_converted[it.Tag()] = pinfo
+		}
 	}
 	for _, it := range outbounds_converted {
 		if it.Detour == "" {
 			continue
 		}
-		if det, ok := outbounds_converted[it.Detour]; ok {
+		if det, ok := outbounds_converted[it.Detour]; ok && det != nil {
 			it.TagDisplay += " → " + det.TagDisplay
 			it.Type += " → " + det.Type
 		}
 	}
 	for _, it := range box.Outbound().Outbounds() {
+		if it == nil {
+			continue
+		}
 		if group, isGroup := it.(adapter.OutboundGroup); isGroup {
 			iGroups = append(iGroups, group)
-
-			// up := 0
-			// down := 0
-			// for _, itemTag := range group.All() {
-			// 	if pinfo, ok := outbounds_converted[itemTag]; ok {
-			// 		up += int(pinfo.Upload)
-			// 		down += int(pinfo.Download)
-			// 	}
-			// }
-			// outbounds_converted[it.Tag()].Upload += int64(up)
-			// outbounds_converted[it.Tag()].Download += int64(down)
 		}
 	}
 
@@ -137,7 +148,6 @@ func (h *HiddifyInstance) GetAllProxiesInfo(hismap map[string]*adapter.URLTestHi
 		selectedTag := iGroup.Now()
 		group.Selected = selectedTag
 
-		// outbounds_converted[iGroup.Tag()].GroupSelectedOutbound = &group.Selected
 		if cacheFile != nil {
 			if isExpand, loaded := cacheFile.LoadGroupExpand(group.Tag); loaded {
 				group.IsExpand = isExpand
@@ -149,6 +159,9 @@ func (h *HiddifyInstance) GetAllProxiesInfo(hismap map[string]*adapter.URLTestHi
 				continue
 			}
 			pinfo := outbounds_converted[itemTag]
+			if pinfo == nil {
+				continue
+			}
 			pinfo.IsSelected = itemTag == selectedTag
 			if onlyGroupitems && pinfo.GroupSelectedTagDisplay != nil && pinfo.TagDisplay != *pinfo.GroupSelectedTagDisplay {
 				pinfo.TagDisplay = pinfo.TagDisplay + " → " + *pinfo.GroupSelectedTagDisplay
@@ -164,14 +177,16 @@ func (h *HiddifyInstance) GetAllProxiesInfo(hismap map[string]*adapter.URLTestHi
 		groups.Items = append(groups.Items, &group)
 
 		if onlyGroupitems && group.Tag == config.OutboundSelectTag {
-			if warp_info, ok := outbounds_converted[config.WARPConfigTag]; ok {
-				warp_info.TagDisplay = config.WARPConfigTag + " → " + outbounds_converted[group.Selected].TagDisplay
+			if warp_info, ok := outbounds_converted[config.WARPConfigTag]; ok && warp_info != nil {
+				selDisplay := group.Selected
+				if sel, ok := outbounds_converted[group.Selected]; ok && sel != nil {
+					selDisplay = sel.TagDisplay
+				}
+				warp_info.TagDisplay = config.WARPConfigTag + " → " + selDisplay
 				group.Selected = warp_info.Tag
 				group.Items = append([]*OutboundInfo{warp_info}, group.Items...)
 			}
-
 		}
-
 	}
 
 	return &groups
@@ -190,13 +205,20 @@ func (s *CoreService) MainOutboundsInfo(req *hcommon.Empty, stream grpc.ServerSt
 }
 
 func (h *HiddifyInstance) AllProxiesInfoStream(stream grpc.ServerStreamingServer[OutboundGroupList], onlyMain bool) error {
+	defer func() {
+		if r := recover(); r != nil {
+			Log(LogLevel_ERROR, LogType_CORE, fmt.Sprintf("AllProxiesInfoStream recovered panic: %v", r))
+		}
+	}()
 	// stream.Send(&OutboundGroupList{})
 	h.MakeSureContextIsNew(stream.Context())
 
 	if ctx, urlTestHistory := h.Context(), h.UrlTestHistory(); ctx != nil && urlTestHistory != nil {
 		monitor := monitoring.Get(ctx)
 
-		stream.Send(h.GetAllProxiesInfo(monitor.OutboundsHistory(""), onlyMain))
+		if info := h.GetAllProxiesInfo(monitor.OutboundsHistory(""), onlyMain); info != nil {
+			_ = stream.Send(info)
+		}
 
 		urltestch, err := monitor.SubscribeGroup("")
 		if err != nil {
@@ -230,9 +252,11 @@ func (h *HiddifyInstance) AllProxiesInfoStream(stream grpc.ServerStreamingServer
 					timerCh = timer.C
 				}
 			case <-timerCh:
-				if err := stream.Send(h.GetAllProxiesInfo(monitor.OutboundsHistory(""), onlyMain)); err != nil {
-					Log(LogLevel_ERROR, LogType_CORE, "failed to send outbounds info: ", err)
-					// return err
+				if info := h.GetAllProxiesInfo(monitor.OutboundsHistory(""), onlyMain); info != nil {
+					if err := stream.Send(info); err != nil {
+						Log(LogLevel_ERROR, LogType_CORE, "failed to send outbounds info: ", err)
+						// return err
+					}
 				}
 				if !timer.Stop() {
 					select {

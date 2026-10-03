@@ -24,6 +24,11 @@ import (
 )
 
 func (h *HiddifyInstance) readStatus(prev *SystemInfo) *SystemInfo {
+	defer func() {
+		if r := recover(); r != nil {
+			Log(LogLevel_ERROR, LogType_CORE, fmt.Sprintf("readStatus recovered panic: %v", r))
+		}
+	}()
 	var message SystemInfo
 	message.Memory = int64(memory.Inuse())
 	message.Goroutines = int32(runtime.NumGoroutine())
@@ -42,31 +47,16 @@ func (h *HiddifyInstance) readStatus(prev *SystemInfo) *SystemInfo {
 		}
 		if box := h.Box(); box != nil {
 			current := ""
-			activeTag := ""
 			if currentOutBound, ok := box.Outbound().Outbound(config.OutboundSelectTag); ok {
 				if selectOutBound, ok := currentOutBound.(*group.Selector); ok {
 					current = selectOutBound.Now()
-					activeTag = current
 					message.CurrentOutbound = TrimTagName(current)
 				}
 			}
-			// if message.CurrentOutbound == config.OutboundURLTestTag {
 			if currentOutBound, ok := box.Outbound().Outbound(current); ok {
 				if g, ok := currentOutBound.(adapter.OutboundGroup); ok {
 					if now := g.Now(); now != "" {
-						activeTag = now
 						message.CurrentOutbound = fmt.Sprint(message.CurrentOutbound, "→", TrimTagName(now))
-					}
-				}
-			}
-			// }
-			if activeTag != "" {
-				if ctx := h.Context(); ctx != nil {
-					if monitor := monitoring.Get(ctx); monitor != nil {
-						hismap := monitor.OutboundsHistory("")
-						if his, ok := hismap[activeTag]; ok && his != nil && his.Delay > 0 && his.Delay < 65000 {
-							message.CurrentOutbound = fmt.Sprintf("%s (%d ms)", message.CurrentOutbound, his.Delay)
-						}
 					}
 				}
 			}
@@ -257,9 +247,23 @@ func (h *HiddifyInstance) SelectOutbound(in *SelectOutboundRequest) (*hcommon.Re
 		}
 		if opt := config.GetOLCRTCOption(in.OutboundTag); opt != nil {
 			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						Log(LogLevel_ERROR, LogType_CORE, fmt.Sprintf("SwitchOLCRTC recovered panic: %v", r))
+					}
+				}()
 				if err := SwitchOLCRTC(opt); err != nil {
 					Log(LogLevel_ERROR, LogType_CORE, "Failed to switch olcRTC: ", err)
 				}
+			}()
+		} else {
+			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						Log(LogLevel_ERROR, LogType_CORE, fmt.Sprintf("SwitchOLCRTC stop recovered panic: %v", r))
+					}
+				}()
+				_ = SwitchOLCRTC(nil)
 			}()
 		}
 		Log(LogLevel_DEBUG, LogType_CORE, "Trying to ping outbound: ", in.OutboundTag)
@@ -284,6 +288,11 @@ func (s *CoreService) UrlTestActive(ctx context.Context, in *hcommon.Empty) (*hc
 }
 
 func (h *HiddifyInstance) UrlTestActive() (*hcommon.Response, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			Log(LogLevel_ERROR, LogType_CORE, fmt.Sprintf("UrlTestActive recovered panic: %v", r))
+		}
+	}()
 	if box := h.Box(); box != nil {
 		outboundGroup, isLoaded := box.Outbound().Outbound(config.OutboundSelectTag)
 		if !isLoaded {
@@ -326,6 +335,11 @@ func (h *HiddifyInstance) UrlTestActive() (*hcommon.Response, error) {
 }
 
 func (h *HiddifyInstance) UrlTest(in *UrlTestRequest) (*hcommon.Response, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			Log(LogLevel_ERROR, LogType_CORE, fmt.Sprintf("UrlTest recovered panic: %v", r))
+		}
+	}()
 	if in == nil || in.Tag == "" {
 		return h.UrlTestActive()
 	}

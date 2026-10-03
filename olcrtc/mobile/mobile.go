@@ -240,6 +240,11 @@ func Check(
 	startedAt := time.Now()
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				doneCh <- fmt.Errorf("olcRTC check panic: %v", r)
+			}
+		}()
 		doneCh <- runClientWithReady(
 			ctx,
 			client.Config{
@@ -331,6 +336,11 @@ func Ping(
 	var readyOnce sync.Once
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				doneCh <- fmt.Errorf("olcRTC httpPing panic: %v", r)
+			}
+		}()
 		doneCh <- runClientWithReady(
 			ctx,
 			client.Config{
@@ -578,6 +588,19 @@ func startWithConfig(
 	var readyOnce sync.Once
 	go func() {
 		defer cancelFunc()
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("olcRTC startWithConfig panic: %v", r)
+				mu.Lock()
+				cancel = nil
+				errRun = fmt.Errorf("olcRTC panic: %v", r)
+				mu.Unlock()
+				readyOnce.Do(func() {
+					close(localReady)
+				})
+				close(done)
+			}
+		}()
 
 		err := runClientWithReady(
 			ctx,
