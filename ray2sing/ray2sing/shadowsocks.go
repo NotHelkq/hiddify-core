@@ -1,9 +1,9 @@
 package ray2sing
 
 import (
-	T "github.com/sagernet/sing-box/option"
+	"strings"
 
-	
+	T "github.com/sagernet/sing-box/option"
 )
 
 func ShadowsocksSingbox(shadowsocksUrl string) (*T.Outbound, error) {
