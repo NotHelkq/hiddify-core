@@ -77,6 +77,13 @@ func setDns(options *option.Options, opt *HiddifyOptions, staticIps *map[string]
 	if err != nil {
 		return err
 	}
+	if staticIps != nil {
+		(*staticIps)["dns.comss.one"] = []string{"195.133.25.16", "83.220.169.155", "212.109.195.93"}
+	}
+	comss_dns, err := getDNSServerOptions(DNSComssTag, "https://dns.comss.one/dns-query", DNSDirectTag, "")
+	if err != nil {
+		return err
+	}
 	static_dns, err := getStaticDNSServerOptions(DNSStaticTag, staticIps)
 	if err != nil {
 		return err
@@ -106,6 +113,7 @@ func setDns(options *option.Options, opt *HiddifyOptions, staticIps *map[string]
 
 			Servers: []option.DNSServerOptions{
 				*static_dns,
+				*comss_dns,
 				*remote_dns,
 				*remote_dns_fallback,
 				*trick_dns,

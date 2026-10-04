@@ -126,6 +126,27 @@ func ChangeHiddifySettings(in *ChangeHiddifySettingsRequest, insert bool) (*Core
 		return nil, err
 	}
 
+	// Map chain-status / unblocker / extra-security into Warp options if configured
+	if (static.HiddifyOptions.ChainStatus == "unblocker" || static.HiddifyOptions.ChainStatus == "both" || static.HiddifyOptions.Unblocker.Mode != "") && static.HiddifyOptions.Unblocker.Mode == "warp" {
+		static.HiddifyOptions.Warp.EnableWarp = true
+		static.HiddifyOptions.Warp.Mode = "warp_over_proxy"
+		if static.HiddifyOptions.Unblocker.Warp.CleanIP != "" {
+			static.HiddifyOptions.Warp.CleanIP = static.HiddifyOptions.Unblocker.Warp.CleanIP
+		}
+		if static.HiddifyOptions.Unblocker.Warp.CleanPort != 0 {
+			static.HiddifyOptions.Warp.CleanPort = uint16(static.HiddifyOptions.Unblocker.Warp.CleanPort)
+		}
+		static.HiddifyOptions.Warp.FakePackets = static.HiddifyOptions.Unblocker.Warp.Noise
+		static.HiddifyOptions.Warp.FakePacketMode = static.HiddifyOptions.Unblocker.Warp.NoiseMode
+		static.HiddifyOptions.Warp.FakePacketSize = static.HiddifyOptions.Unblocker.Warp.NoiseSize
+		static.HiddifyOptions.Warp.FakePacketDelay = static.HiddifyOptions.Unblocker.Warp.NoiseDelay
+	} else if (static.HiddifyOptions.ChainStatus == "extra_security" || static.HiddifyOptions.ChainStatus == "both" || static.HiddifyOptions.ExtraSecurity.Mode != "") && static.HiddifyOptions.ExtraSecurity.Mode == "warp" {
+		static.HiddifyOptions.Warp.EnableWarp = true
+		static.HiddifyOptions.Warp.Mode = "proxy_over_warp"
+	} else if static.HiddifyOptions.ChainStatus == "off" {
+		static.HiddifyOptions.Warp.EnableWarp = false
+	}
+
 	if static.HiddifyOptions.Warp.WireguardConfigStr != "" {
 		err := json.Unmarshal([]byte(static.HiddifyOptions.Warp.WireguardConfigStr), &static.HiddifyOptions.Warp.WireguardConfig)
 		if err != nil {

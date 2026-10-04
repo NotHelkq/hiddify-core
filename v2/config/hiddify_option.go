@@ -23,13 +23,16 @@ type HiddifyOptions struct {
 	BalancerStrategy        string `json:"balancer-strategy,omitempty" overridable:"true"`
 	// GeoIPPath        string      `json:"geoip-path"`
 	// GeoSitePath      string      `json:"geosite-path"`
-	Rules     []Rule      `json:"rules,omitempty" overridable:"true"`
-	RouteRule *RouteRule  `json:"route-rule,omitempty" overridable:"true"`
-	Warp      WarpOptions `json:"warp,omitempty"`
-	Warp2     WarpOptions `json:"warp2,omitempty"`
-	Mux       MuxOptions  `json:"mux,omitempty" overridable:"true"`
-	TLSTricks TLSTricks   `json:"tls-tricks,omitempty"`
-	EnableNTP bool        `json:"enable-ntp,omitempty"`
+	Rules         []Rule              `json:"rules,omitempty" overridable:"true"`
+	RouteRule     *RouteRule          `json:"route-rule,omitempty" overridable:"true"`
+	ChainStatus   string              `json:"chain-status,omitempty"`
+	ExtraSecurity ExtraSecurityOption `json:"extra-security,omitempty"`
+	Unblocker     UnblockerOption     `json:"unblocker,omitempty"`
+	Warp          WarpOptions         `json:"warp,omitempty"`
+	Warp2         WarpOptions         `json:"warp2,omitempty"`
+	Mux           MuxOptions          `json:"mux,omitempty" overridable:"true"`
+	TLSTricks     TLSTricks           `json:"tls-tricks,omitempty"`
+	EnableNTP     bool                `json:"enable-ntp,omitempty"`
 
 	DNSOptions
 	InboundOptions
@@ -104,6 +107,42 @@ type WarpOptions struct {
 	CleanIP            string              `json:"clean-ip,omitempty"`
 	CleanPort          uint16              `json:"clean-port,omitempty"`
 	Account            WarpAccount
+}
+
+type ExtraSecurityOption struct {
+	Mode    string                     `json:"mode,omitempty"`
+	Warp    ExtraSecurityWarpOption    `json:"warp,omitempty"`
+	Psiphon ExtraSecurityPsiphonOption `json:"psiphon,omitempty"`
+}
+
+type ExtraSecurityWarpOption struct {
+	LicenseKey string `json:"license-key,omitempty"`
+}
+
+type ExtraSecurityPsiphonOption struct {
+	Region           string `json:"region,omitempty"`
+	ConduitPairingID string `json:"conduit-pairing-id,omitempty"`
+}
+
+type UnblockerOption struct {
+	Mode    string                  `json:"mode,omitempty"`
+	Warp    UnblockerWarpOption     `json:"warp,omitempty"`
+	Psiphon UnblockerPsiphonOption  `json:"psiphon,omitempty"`
+}
+
+type UnblockerWarpOption struct {
+	LicenseKey string `json:"license-key,omitempty"`
+	CleanIP    string `json:"clean-ip,omitempty"`
+	CleanPort  int    `json:"clean-port,omitempty"`
+	Noise      string `json:"noise,omitempty"`
+	NoiseMode  string `json:"noise-mode,omitempty"`
+	NoiseSize  string `json:"noise-size,omitempty"`
+	NoiseDelay string `json:"noise-delay,omitempty"`
+}
+
+type UnblockerPsiphonOption struct {
+	Region           string `json:"region,omitempty"`
+	ConduitPairingID string `json:"conduit-pairing-id,omitempty"`
 }
 
 func DefaultHiddifyOptions() *HiddifyOptions {

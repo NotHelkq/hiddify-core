@@ -22,6 +22,7 @@ import (
 )
 
 const (
+	DNSComssTag          = "dns-comss"
 	DNSRemoteTag         = "dns-remote"
 	DNSRemoteTagFallback = "dns-remote-fallback"
 	DNSLocalTag          = "dns-local"
@@ -58,6 +59,23 @@ var (
 	OutboundMainDetour       = OutboundSelectTag
 	OutboundWARPConfigDetour = ""
 	PredefinedOutboundTags   = []string{OutboundDirectTag, OutboundBypassTag, OutboundSelectTag, OutboundURLTestTag, OutboundDNSTag, OutboundDirectFragmentTag, WARPConfigTag}
+	GeminiDomains            = []string{
+		"gemini.google.com",
+		"bard.google.com",
+		"generativelanguage.googleapis.com",
+		"proactivebackend-pa.googleapis.com",
+		"alkalimakersuite-pa.googleapis.com",
+		"aistudio.google.com",
+		"makersuite.google.com",
+		"deepmind.google",
+		"deepmind.com",
+		"ai.google.dev",
+	}
+	GeminiPoolIPs = []string{
+		"95.81.98.135/32",
+		"89.150.59.128/32",
+		"45.88.174.254/32",
+	}
 )
 
 func isDirectDetour(detour string) bool {
@@ -200,10 +218,14 @@ func setOutbounds(options *option.Options, input *option.Options, opt *HiddifyOp
 		out.Tag = WARPConfigTag
 		if opts, ok := out.Options.(*option.WARPEndpointOptions); ok {
 			if opt.Warp.Mode == "warp_over_proxy" {
+				OutboundWARPConfigDetour = OutboundSelectTag
 				opts.Detour = OutboundSelectTag
+				opts.Profile.Detour = OutboundSelectTag
 				opts.MTU = 1280
 			} else {
+				OutboundWARPConfigDetour = ""
 				opts.Detour = ""
+				opts.Profile.Detour = ""
 				opt.MTU = max(opt.MTU, 1340)
 			}
 
@@ -260,11 +282,6 @@ func setOutbounds(options *option.Options, input *option.Options, opt *HiddifyOp
 			opt.ConnectionTestUrls = []string{opt.ConnectionTestUrl}
 		} else {
 			opt.ConnectionTestUrls = []string{"http://www.gstatic.com/generate_204"}
-		}
-	}
-	for i, u := range opt.ConnectionTestUrls {
-		if strings.Contains(u, "cp.cloudflare.com") || strings.Contains(u, "captive.apple.com") {
-			opt.ConnectionTestUrls[i] = "http://www.gstatic.com/generate_204"
 		}
 	}
 	// urlTest := option.Outbound{
@@ -401,18 +418,13 @@ func setExperimental(options *option.Options, hopt *HiddifyOptions) {
 			hopt.ConnectionTestUrls = []string{"http://www.gstatic.com/generate_204"}
 		}
 	}
-	for i, u := range hopt.ConnectionTestUrls {
-		if strings.Contains(u, "cp.cloudflare.com") || strings.Contains(u, "captive.apple.com") {
-			hopt.ConnectionTestUrls[i] = "http://www.gstatic.com/generate_204"
-		}
-	}
 	if hopt.EnableClashApi {
 		if hopt.ClashApiSecret == "" {
 			hopt.ClashApiSecret = generateRandomString(16)
 		}
 		options.Experimental = &option.ExperimentalOptions{
 			UnifiedDelay: &option.UnifiedDelayOptions{
-				Enabled: true,
+				Enabled: false,
 			},
 			ClashAPI: &option.ClashAPIOptions{
 				ExternalController: fmt.Sprintf("%s:%d", "127.0.0.1", hopt.ClashApiPort),
@@ -980,6 +992,21 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			},
 		})
 	}
+	routeRules = append(routeRules, option.Rule{
+		Type: C.RuleTypeDefault,
+		DefaultOptions: option.DefaultRule{
+			RawDefaultRule: option.RawDefaultRule{
+				Domain: GeminiDomains,
+				IPCIDR: GeminiPoolIPs,
+			},
+			RuleAction: option.RuleAction{
+				Action: C.RuleActionTypeRoute,
+				RouteOptions: option.RouteActionOptions{
+					Outbound: OutboundDirectTag,
+				},
+			},
+		},
+	})
 	options.Route = &option.RouteOptions{
 		Rules:               routeRules,
 		Final:               OutboundMainDetour,
@@ -999,6 +1026,23 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 		// },
 	}
 	// if opt.EnableDNSRouting {
+	dnsRules = append(
+		dnsRules,
+		option.DefaultDNSRule{
+			RawDefaultDNSRule: option.RawDefaultDNSRule{
+				Domain: GeminiDomains,
+			},
+			DNSRuleAction: option.DNSRuleAction{
+				Action: C.RuleActionTypeRoute,
+				RouteOptions: option.DNSRouteActionOptions{
+					Server:         DNSComssTag,
+					Strategy:       option.DomainStrategy(C.DomainStrategyPreferIPv4),
+					RewriteTTL:     &DEFAULT_DNS_TTL,
+					BypassIfFailed: false,
+				},
+			},
+		},
+	)
 	if hopt.EnableFakeDNS {
 		// inbounds := []string{InboundTUNTag}
 		// for _, inp := range options.Inbounds {
