@@ -77,6 +77,15 @@ func setDns(options *option.Options, opt *HiddifyOptions, staticIps *map[string]
 	if err != nil {
 		return err
 	}
+	if staticIps != nil {
+		(*staticIps)["api.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
+		(*staticIps)["engage.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
+		(*staticIps)["dns.comss.one"] = []string{"195.133.25.16", "83.220.169.155", "212.109.195.93"}
+		geminiStaticIPs := []string{"95.81.98.135", "89.150.59.128"}
+		for _, d := range GeminiDomains {
+			(*staticIps)[d] = geminiStaticIPs
+		}
+	}
 	static_dns, err := getStaticDNSServerOptions(DNSStaticTag, staticIps)
 	if err != nil {
 		return err
@@ -106,18 +115,9 @@ func setDns(options *option.Options, opt *HiddifyOptions, staticIps *map[string]
 		*remote_no_warp_dns,
 	}
 
-	if staticIps != nil {
-		(*staticIps)["api.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
-		(*staticIps)["engage.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
-	}
-	if opt.EnableComssDns {
-		if staticIps != nil {
-			(*staticIps)["dns.comss.one"] = []string{"195.133.25.16", "83.220.169.155", "212.109.195.93"}
-		}
-		comss_dns, err := getDNSServerOptions(DNSComssTag, "https://dns.comss.one:443/dns-query", DNSDirectTag, "")
-		if err == nil {
-			servers = append(servers, *comss_dns)
-		}
+	comss_dns, err := getDNSServerOptions(DNSComssTag, "https://dns.comss.one:443/dns-query", DNSDirectTag, "")
+	if err == nil {
+		servers = append(servers, *comss_dns)
 	}
 
 	dnsOptions := option.DNSOptions{
@@ -244,6 +244,21 @@ func addForceDirect(options *option.Options, hopt *HiddifyOptions) ([]option.Def
 		option.DefaultDNSRule{
 			RawDefaultDNSRule: option.RawDefaultDNSRule{
 				Domain: []string{"api.cloudflareclient.com", "engage.cloudflareclient.com"},
+			},
+			DNSRuleAction: option.DNSRuleAction{
+				Action: C.RuleActionTypeRoute,
+				RouteOptions: option.DNSRouteActionOptions{
+					Server:         DNSStaticTag,
+					Strategy:       hopt.DirectDnsDomainStrategy,
+					BypassIfFailed: false,
+					RewriteTTL:     &DEFAULT_DNS_TTL,
+				},
+			},
+		},
+		option.DefaultDNSRule{
+			RawDefaultDNSRule: option.RawDefaultDNSRule{
+				Domain:       GeminiDomains,
+				DomainSuffix: GeminiDomains,
 			},
 			DNSRuleAction: option.DNSRuleAction{
 				Action: C.RuleActionTypeRoute,

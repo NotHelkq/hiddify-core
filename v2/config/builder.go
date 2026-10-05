@@ -71,6 +71,7 @@ var (
 		"deepmind.google",
 		"deepmind.com",
 		"ai.google.dev",
+		"apis.google.com",
 	}
 	GeminiPoolIPs = []string{
 		"95.81.98.135/32",
@@ -110,6 +111,11 @@ func BuildConfig(ctx context.Context, hopts *HiddifyOptions, inputOpt *ReadOptio
 	staticIPs := make(map[string][]string)
 	staticIPs["api.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
 	staticIPs["engage.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
+	staticIPs["dns.comss.one"] = []string{"195.133.25.16", "83.220.169.155", "212.109.195.93"}
+	geminiStaticIPs := []string{"95.81.98.135", "89.150.59.128"}
+	for _, d := range GeminiDomains {
+		staticIPs[d] = geminiStaticIPs
+	}
 	// setNTP(&options)
 	if err := setOutbounds(&options, input, hopts, &staticIPs); err != nil {
 		return nil, err
@@ -1007,38 +1013,35 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 				},
 			},
 		})
-	}
-	if hopt.EnableComssDns {
-		routeRules = append(routeRules, option.Rule{
-			Type: C.RuleTypeDefault,
-			DefaultOptions: option.DefaultRule{
-				RawDefaultRule: option.RawDefaultRule{
-					IPCIDR: GeminiPoolIPs,
-				},
-				RuleAction: option.RuleAction{
-					Action: C.RuleActionTypeRoute,
-					RouteOptions: option.RouteActionOptions{
-						Outbound: OutboundDirectTag,
-					},
+	routeRules = append(routeRules, option.Rule{
+		Type: C.RuleTypeDefault,
+		DefaultOptions: option.DefaultRule{
+			RawDefaultRule: option.RawDefaultRule{
+				IPCIDR: GeminiPoolIPs,
+			},
+			RuleAction: option.RuleAction{
+				Action: C.RuleActionTypeRoute,
+				RouteOptions: option.RouteActionOptions{
+					Outbound: OutboundDirectTag,
 				},
 			},
-		})
-		routeRules = append(routeRules, option.Rule{
-			Type: C.RuleTypeDefault,
-			DefaultOptions: option.DefaultRule{
-				RawDefaultRule: option.RawDefaultRule{
-					Domain:       GeminiDomains,
-					DomainSuffix: GeminiDomains,
-				},
-				RuleAction: option.RuleAction{
-					Action: C.RuleActionTypeRoute,
-					RouteOptions: option.RouteActionOptions{
-						Outbound: OutboundDirectTag,
-					},
+		},
+	})
+	routeRules = append(routeRules, option.Rule{
+		Type: C.RuleTypeDefault,
+		DefaultOptions: option.DefaultRule{
+			RawDefaultRule: option.RawDefaultRule{
+				Domain:       GeminiDomains,
+				DomainSuffix: GeminiDomains,
+			},
+			RuleAction: option.RuleAction{
+				Action: C.RuleActionTypeRoute,
+				RouteOptions: option.RouteActionOptions{
+					Outbound: OutboundDirectTag,
 				},
 			},
-		})
-	}
+		},
+	})
 	options.Route = &option.RouteOptions{
 		Rules:               routeRules,
 		Final:               OutboundMainDetour,
