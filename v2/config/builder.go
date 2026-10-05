@@ -1021,7 +1021,7 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			RawDefaultRule: option.RawDefaultRule{
 				Domain:       GeminiDomains,
 				DomainSuffix: GeminiDomains,
-				Network:      []string{C.NetworkUDP},
+				Network:      []string{"udp"},
 			},
 			RuleAction: option.RuleAction{
 				Action: C.RuleActionTypeReject,
