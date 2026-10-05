@@ -108,7 +108,8 @@ func BuildConfig(ctx context.Context, hopts *HiddifyOptions, inputOpt *ReadOptio
 	setLog(&options, hopts)
 	setInbound(&options, hopts)
 	staticIPs := make(map[string][]string)
-	// staticIPs["api.cloudflareclient.com"] = []string{"104.16.192.82", "2606:4700::6810:1854", getRandomWarpIP()}
+	staticIPs["api.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
+	staticIPs["engage.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
 	// setNTP(&options)
 	if err := setOutbounds(&options, input, hopts, &staticIPs); err != nil {
 		return nil, err
@@ -456,6 +457,7 @@ func setExperimental(options *option.Options, hopt *HiddifyOptions) {
 				Interval:       badoption.Duration(hopt.URLTestInterval.Duration()),
 				DebounceWindow: badoption.Duration(time.Millisecond * 100),
 				IdleTimeout:    badoption.Duration(hopt.URLTestInterval.Duration().Nanoseconds() * 3),
+				URLTestTimeout: badoption.Duration(5 * time.Second),
 			},
 		}
 	}
@@ -813,7 +815,7 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			Tag:    "geosite-ads",
 			Format: C.RuleSetFormatBinary,
 			RemoteOptions: option.RemoteRuleSet{
-				URL:            "https://raw.githubusercontent.com/hiddify/hiddify-geo/rule-set/block/geosite-category-ads-all.srs",
+				URL:            "https://fastly.jsdelivr.net/gh/hiddify/hiddify-geo@rule-set/block/geosite-category-ads-all.srs",
 				UpdateInterval: badoption.Duration(5 * time.Hour * 24),
 				DownloadDetour: OutboundSelectTag,
 			},
@@ -823,7 +825,7 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			Tag:    "geosite-malware",
 			Format: C.RuleSetFormatBinary,
 			RemoteOptions: option.RemoteRuleSet{
-				URL:            "https://raw.githubusercontent.com/hiddify/hiddify-geo/rule-set/block/geosite-malware.srs",
+				URL:            "https://fastly.jsdelivr.net/gh/hiddify/hiddify-geo@rule-set/block/geosite-malware.srs",
 				UpdateInterval: badoption.Duration(5 * time.Hour * 24),
 				DownloadDetour: OutboundSelectTag,
 			},
@@ -833,7 +835,7 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			Tag:    "geosite-phishing",
 			Format: C.RuleSetFormatBinary,
 			RemoteOptions: option.RemoteRuleSet{
-				URL:            "https://raw.githubusercontent.com/hiddify/hiddify-geo/rule-set/block/geosite-phishing.srs",
+				URL:            "https://fastly.jsdelivr.net/gh/hiddify/hiddify-geo@rule-set/block/geosite-phishing.srs",
 				UpdateInterval: badoption.Duration(5 * time.Hour * 24),
 				DownloadDetour: OutboundSelectTag,
 			},
@@ -843,7 +845,7 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			Tag:    "geosite-cryptominers",
 			Format: C.RuleSetFormatBinary,
 			RemoteOptions: option.RemoteRuleSet{
-				URL:            "https://raw.githubusercontent.com/hiddify/hiddify-geo/rule-set/block/geosite-cryptominers.srs",
+				URL:            "https://fastly.jsdelivr.net/gh/hiddify/hiddify-geo@rule-set/block/geosite-cryptominers.srs",
 				UpdateInterval: badoption.Duration(5 * time.Hour * 24),
 				DownloadDetour: OutboundSelectTag,
 			},
@@ -853,7 +855,7 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			Tag:    "geoip-phishing",
 			Format: C.RuleSetFormatBinary,
 			RemoteOptions: option.RemoteRuleSet{
-				URL:            "https://raw.githubusercontent.com/hiddify/hiddify-geo/rule-set/block/geoip-phishing.srs",
+				URL:            "https://fastly.jsdelivr.net/gh/hiddify/hiddify-geo@rule-set/block/geoip-phishing.srs",
 				UpdateInterval: badoption.Duration(5 * time.Hour * 24),
 				DownloadDetour: OutboundSelectTag,
 			},
@@ -863,7 +865,7 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			Tag:    "geoip-malware",
 			Format: C.RuleSetFormatBinary,
 			RemoteOptions: option.RemoteRuleSet{
-				URL:            "https://raw.githubusercontent.com/hiddify/hiddify-geo/rule-set/block/geoip-malware.srs",
+				URL:            "https://fastly.jsdelivr.net/gh/hiddify/hiddify-geo@rule-set/block/geoip-malware.srs",
 				UpdateInterval: badoption.Duration(5 * time.Hour * 24),
 				DownloadDetour: OutboundSelectTag,
 			},
@@ -956,7 +958,7 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			Tag:    "geoip-" + hopt.Region,
 			Format: C.RuleSetFormatBinary,
 			RemoteOptions: option.RemoteRuleSet{
-				URL:            "https://raw.githubusercontent.com/hiddify/hiddify-geo/rule-set/country/geoip-" + hopt.Region + ".srs",
+				URL:            "https://fastly.jsdelivr.net/gh/hiddify/hiddify-geo@rule-set/country/geoip-" + hopt.Region + ".srs",
 				UpdateInterval: badoption.Duration(5 * time.Hour * 24),
 				DownloadDetour: OutboundSelectTag,
 			},
@@ -966,7 +968,7 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			Tag:    "geosite-" + hopt.Region,
 			Format: C.RuleSetFormatBinary,
 			RemoteOptions: option.RemoteRuleSet{
-				URL:            "https://raw.githubusercontent.com/hiddify/hiddify-geo/rule-set/country/geosite-" + hopt.Region + ".srs",
+				URL:            "https://fastly.jsdelivr.net/gh/hiddify/hiddify-geo@rule-set/country/geosite-" + hopt.Region + ".srs",
 				UpdateInterval: badoption.Duration(5 * time.Hour * 24),
 				DownloadDetour: OutboundSelectTag,
 			},

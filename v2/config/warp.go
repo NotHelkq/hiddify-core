@@ -208,12 +208,12 @@ func patchWarp(base *option.Endpoint, configOpt *HiddifyOptions, final bool, sta
 			if configOpt != nil && configOpt.Warp.CleanIP != "" && configOpt.Warp.CleanIP != "auto" && configOpt.Warp.CleanIP != "random" && configOpt.Warp.CleanIP != "default" {
 				opts.ServerOptions.Server = configOpt.Warp.CleanIP
 			} else {
-				opts.ServerOptions.Server = ""
+				opts.ServerOptions.Server = "162.159.192.1"
 			}
 			if configOpt != nil && configOpt.Warp.CleanPort != 0 {
 				opts.ServerOptions.ServerPort = configOpt.Warp.CleanPort
 			} else {
-				opts.ServerOptions.ServerPort = 0
+				opts.ServerOptions.ServerPort = 2408
 			}
 			if isDirectDetour(OutboundWARPConfigDetour) {
 				opts.Profile.Detour = ""

@@ -106,6 +106,10 @@ func setDns(options *option.Options, opt *HiddifyOptions, staticIps *map[string]
 		*remote_no_warp_dns,
 	}
 
+	if staticIps != nil {
+		(*staticIps)["api.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
+		(*staticIps)["engage.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
+	}
 	if opt.EnableComssDns {
 		if staticIps != nil {
 			(*staticIps)["dns.comss.one"] = []string{"195.133.25.16", "83.220.169.155", "212.109.195.93"}
@@ -239,12 +243,12 @@ func addForceDirect(options *option.Options, hopt *HiddifyOptions) ([]option.Def
 	forceDirectRules = append(forceDirectRules,
 		option.DefaultDNSRule{
 			RawDefaultDNSRule: option.RawDefaultDNSRule{
-				Domain: []string{"api.cloudflareclient.com"},
+				Domain: []string{"api.cloudflareclient.com", "engage.cloudflareclient.com"},
 			},
 			DNSRuleAction: option.DNSRuleAction{
 				Action: C.RuleActionTypeRoute,
 				RouteOptions: option.DNSRouteActionOptions{
-					Server:         DNSRemoteNoWarpTag,
+					Server:         DNSStaticTag,
 					Strategy:       hopt.DirectDnsDomainStrategy,
 					BypassIfFailed: false,
 					RewriteTTL:     &DEFAULT_DNS_TTL,
@@ -253,7 +257,6 @@ func addForceDirect(options *option.Options, hopt *HiddifyOptions) ([]option.Def
 		},
 	)
 
-	dnsMap["api.cloudflareclient.com"] = ""
 	for _, url := range hopt.ConnectionTestUrls { //To avoid dns bug when using urltest
 		if host, err := getHostnameIfNotIP(url); err == nil {
 			dnsMap[host] = ""
