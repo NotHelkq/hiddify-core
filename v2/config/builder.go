@@ -3,6 +3,7 @@ package config
 import (
 	context "context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
@@ -211,13 +212,20 @@ func setOutbounds(options *option.Options, input *option.Options, opt *HiddifyOp
 		// 	FakePacketsDelay: opt.Warp.FakePacketDelay,
 		// 	FakePacketsMode:  opt.Warp.FakePacketMode,
 		// })
-		noise := &hiddify.NoiseOptions{
-			FakePackets:      opt.Warp.FakePackets,
-			FakePacketsSize:  opt.Warp.FakePacketSize,
-			FakePacketsDelay: opt.Warp.FakePacketDelay,
-			FakePacketsMode:  opt.Warp.FakePacketMode,
+		var noise hiddify.NoiseOptions
+		if opt.Warp.FakePackets != "" {
+			noiseJson, _ := json.Marshal(map[string]any{
+				"fake_packet": map[string]any{
+					"enabled": true,
+					"count":   opt.Warp.FakePackets,
+					"size":    opt.Warp.FakePacketSize,
+					"delay":   opt.Warp.FakePacketDelay,
+					"mode":    opt.Warp.FakePacketMode,
+				},
+			})
+			_ = json.Unmarshal(noiseJson, &noise)
 		}
-		out, err := GenerateWarpSingboxNew("p1", noise)
+		out, err := GenerateWarpSingboxNew("p1", &noise)
 		if err != nil {
 			return fmt.Errorf("failed to generate warp config: %v", err)
 		}
