@@ -1014,26 +1014,56 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			},
 		})
 	}
-	routeRules = append(routeRules, option.Rule{
-		Type: C.RuleTypeDefault,
-		DefaultOptions: option.DefaultRule{
-			RawDefaultRule: option.RawDefaultRule{
-				IPCIDR: GeminiPoolIPs,
-			},
-			RuleAction: option.RuleAction{
-				Action: C.RuleActionTypeRoute,
-				RouteOptions: option.RouteActionOptions{
-					Outbound: OutboundDirectTag,
-				},
-			},
-		},
-	})
+	// 1. Reject QUIC (UDP) for Gemini domains so Chrome and apps fall back to TCP immediately
 	routeRules = append(routeRules, option.Rule{
 		Type: C.RuleTypeDefault,
 		DefaultOptions: option.DefaultRule{
 			RawDefaultRule: option.RawDefaultRule{
 				Domain:       GeminiDomains,
 				DomainSuffix: GeminiDomains,
+				Network:      []string{C.NetworkUDP},
+			},
+			RuleAction: option.RuleAction{
+				Action: C.RuleActionTypeReject,
+				RejectOptions: option.RejectActionOptions{
+					Method: C.RuleActionRejectMethodDefault,
+				},
+			},
+		},
+	})
+	// 2. Route TCP for Gemini domains to OutboundDirectTag with OverrideAddress to COMSS proxy
+	routeRules = append(routeRules, option.Rule{
+		Type: C.RuleTypeDefault,
+		DefaultOptions: option.DefaultRule{
+			RawDefaultRule: option.RawDefaultRule{
+				Domain:       GeminiDomains,
+				DomainSuffix: GeminiDomains,
+			},
+			RuleAction: option.RuleAction{
+				Action: C.RuleActionTypeRoute,
+				RouteOptions: option.RouteActionOptions{
+					Outbound: OutboundDirectTag,
+					RawRouteOptionsActionOptions: option.RawRouteOptionsActionOptions{
+						OverrideAddress: "95.81.98.135",
+					},
+				},
+			},
+		},
+	})
+	// 3. Direct route for COMSS reverse proxy IPs and COMSS DNS servers
+	routeRules = append(routeRules, option.Rule{
+		Type: C.RuleTypeDefault,
+		DefaultOptions: option.DefaultRule{
+			RawDefaultRule: option.RawDefaultRule{
+				IPCIDR: []string{
+					"95.81.98.135/32",
+					"89.150.59.128/32",
+					"45.88.174.254/32",
+					"195.133.25.16/32",
+					"83.220.169.155/32",
+					"212.109.195.93/32",
+				},
+				Domain: []string{"dns.comss.one"},
 			},
 			RuleAction: option.RuleAction{
 				Action: C.RuleActionTypeRoute,
