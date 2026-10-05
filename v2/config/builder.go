@@ -23,7 +23,6 @@ import (
 )
 
 const (
-	DNSComssTag          = "dns-comss"
 	DNSRemoteTag         = "dns-remote"
 	DNSRemoteTagFallback = "dns-remote-fallback"
 	DNSLocalTag          = "dns-local"
@@ -60,24 +59,6 @@ var (
 	OutboundMainDetour       = OutboundSelectTag
 	OutboundWARPConfigDetour = ""
 	PredefinedOutboundTags   = []string{OutboundDirectTag, OutboundBypassTag, OutboundSelectTag, OutboundURLTestTag, OutboundDNSTag, OutboundDirectFragmentTag, WARPConfigTag}
-	GeminiDomains            = []string{
-		"gemini.google.com",
-		"bard.google.com",
-		"generativelanguage.googleapis.com",
-		"proactivebackend-pa.googleapis.com",
-		"alkalimakersuite-pa.googleapis.com",
-		"aistudio.google.com",
-		"makersuite.google.com",
-		"deepmind.google",
-		"deepmind.com",
-		"ai.google.dev",
-		"apis.google.com",
-	}
-	GeminiPoolIPs = []string{
-		"95.81.98.135/32",
-		"89.150.59.128/32",
-		"45.88.174.254/32",
-	}
 )
 
 func isDirectDetour(detour string) bool {
@@ -111,8 +92,6 @@ func BuildConfig(ctx context.Context, hopts *HiddifyOptions, inputOpt *ReadOptio
 	staticIPs := make(map[string][]string)
 	staticIPs["api.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
 	staticIPs["engage.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
-	staticIPs["dns.comss.one"] = []string{"195.133.25.16", "83.220.169.155", "212.109.195.93"}
-
 	// setNTP(&options)
 	if err := setOutbounds(&options, input, hopts, &staticIPs); err != nil {
 		return nil, err
@@ -1012,29 +991,6 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 		})
 	}
 
-	// 3. Direct route for COMSS reverse proxy IPs and COMSS DNS servers
-	routeRules = append(routeRules, option.Rule{
-		Type: C.RuleTypeDefault,
-		DefaultOptions: option.DefaultRule{
-			RawDefaultRule: option.RawDefaultRule{
-				IPCIDR: []string{
-					"95.81.98.135/32",
-					"89.150.59.128/32",
-					"45.88.174.254/32",
-					"195.133.25.16/32",
-					"83.220.169.155/32",
-					"212.109.195.93/32",
-				},
-				Domain: []string{"dns.comss.one"},
-			},
-			RuleAction: option.RuleAction{
-				Action: C.RuleActionTypeRoute,
-				RouteOptions: option.RouteActionOptions{
-					Outbound: OutboundDirectTag,
-				},
-			},
-		},
-	})
 	options.Route = &option.RouteOptions{
 		Rules:               routeRules,
 		Final:               OutboundMainDetour,
@@ -1053,132 +1009,7 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 		// 	Path: opt.GeoSitePath,
 		// },
 	}
-	// if opt.EnableDNSRouting {
-	if hopt.EnableComssDns {
-		dnsRules = append(
-			dnsRules,
-			option.DefaultDNSRule{
-				RawDefaultDNSRule: option.RawDefaultDNSRule{
-					Domain:       GeminiDomains,
-					DomainSuffix: GeminiDomains,
-				},
-				DNSRuleAction: option.DNSRuleAction{
-					Action: C.RuleActionTypeRoute,
-					RouteOptions: option.DNSRouteActionOptions{
-						Server:         DNSComssTag,
-						Strategy:       option.DomainStrategy(C.DomainStrategyPreferIPv4),
-						RewriteTTL:     &DEFAULT_DNS_TTL,
-						BypassIfFailed: false,
-					},
-				},
-			},
-		)
-	}
-	if hopt.EnableFakeDNS {
-		// inbounds := []string{InboundTUNTag}
-		// for _, inp := range options.Inbounds {
-		// 	if strings.Contains(inp.Tag, InboundDirectTag) || strings.Contains(inp.Tag, InboundRedirect) || strings.Contains(inp.Tag, InboundTProxy) {
-		// 		inbounds = append(inbounds, inp.Tag)
-		// 	}
-		// }
-		dnsRules = append(
-			dnsRules,
-			option.DefaultDNSRule{
-				RawDefaultDNSRule: option.RawDefaultDNSRule{
-					// Inbound: inbounds,
-					QueryType: badoption.Listable[option.DNSQueryType]{
-						option.DNSQueryType(mDNS.StringToType["A"]),
-						option.DNSQueryType(mDNS.StringToType["AAAA"]),
-					},
-				},
-				DNSRuleAction: option.DNSRuleAction{
-					Action: C.RuleActionTypeRoute,
-					RouteOptions: option.DNSRouteActionOptions{
-						Server:         DNSFakeTag,
-						Strategy:       hopt.RemoteDnsDomainStrategy,
-						RewriteTTL:     &DEFAULT_DNS_TTL,
-						DisableCache:   true,
-						BypassIfFailed: false,
-					},
-				},
-			})
-
-	}
-
-	dnsRules = append(dnsRules, option.DefaultDNSRule{
-		RawDefaultDNSRule: option.RawDefaultDNSRule{},
-		DNSRuleAction: option.DNSRuleAction{
-			Action: C.RuleActionTypeRoute,
-			RouteOptions: option.DNSRouteActionOptions{
-				Server:         DNSMultiRemoteTag,
-				Strategy:       hopt.RemoteDnsDomainStrategy,
-				RewriteTTL:     &DEFAULT_DNS_TTL,
-				BypassIfFailed: false,
-			},
-		},
-	},
-	)
-	// dnsRules = append(dnsRules, option.DefaultDNSRule{
-	// 	RawDefaultDNSRule: option.RawDefaultDNSRule{},
-	// 	DNSRuleAction: option.DNSRuleAction{
-	// 		Action: C.RuleActionTypeRoute,
-	// 		RouteOptions: option.DNSRouteActionOptions{
-	// 			Server:         DNSRemoteTagFallback,
-	// 			Strategy:       hopt.RemoteDnsDomainStrategy,
-	// 			RewriteTTL:     &DEFAULT_DNS_TTL,
-	// 			BypassIfFailed: false,
-	// 		},
-	// 	},
-	// },
-	// )
-
-	// dnsRules = append(dnsRules, option.DefaultDNSRule{
-
-	// 	RawDefaultDNSRule: option.RawDefaultDNSRule{},
-	// 	DNSRuleAction: option.DNSRuleAction{
-	// 		Action: C.RuleActionTypeRoute,
-	// 		RouteOptions: option.DNSRouteActionOptions{
-	// 			Server:         DNSTricksDirectTag,
-	// 			BypassIfFailed: false,
-	// 		},
-	// 	},
-	// },
-	// )
-	// dnsRules = append(dnsRules, option.DefaultDNSRule{
-	// 	RawDefaultDNSRule: option.RawDefaultDNSRule{},
-	// 	DNSRuleAction: option.DNSRuleAction{
-	// 		Action: C.RuleActionTypeRoute,
-	// 		RouteOptions: option.DNSRouteActionOptions{
-	// 			Server:         DNSDirectTag,
-	// 			BypassIfFailed: false,
-	// 		},
-	// 	},
-	// },
-	// )
-	// dnsRules = append(dnsRules, option.DefaultDNSRule{
-	// 	RawDefaultDNSRule: option.RawDefaultDNSRule{},
-	// 	DNSRuleAction: option.DNSRuleAction{
-	// 		Action: C.RuleActionTypeRoute,
-	// 		RouteOptions: option.DNSRouteActionOptions{
-	// 			Server: DNSLocalTag,
-	// 			// BypassIfFailed: false,
-	// 		},
-	// 	},
-	// },
-	// )
-
-	for _, dnsRule := range dnsRules {
-		if dnsRule.IsValid() {
-			options.DNS.Rules = append(
-				options.DNS.Rules,
-				option.DNSRule{
-					Type:           C.RuleTypeDefault,
-					DefaultOptions: dnsRule,
-				},
-			)
-		}
-	}
-	// }
+// }
 	return nil
 }
 
