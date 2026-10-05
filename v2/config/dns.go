@@ -77,13 +77,6 @@ func setDns(options *option.Options, opt *HiddifyOptions, staticIps *map[string]
 	if err != nil {
 		return err
 	}
-	if staticIps != nil {
-		(*staticIps)["dns.comss.one"] = []string{"195.133.25.16", "83.220.169.155", "212.109.195.93"}
-	}
-	comss_dns, err := getDNSServerOptions(DNSComssTag, "https://dns.comss.one/dns-query", DNSDirectTag, "")
-	if err != nil {
-		return err
-	}
 	static_dns, err := getStaticDNSServerOptions(DNSStaticTag, staticIps)
 	if err != nil {
 		return err
@@ -103,6 +96,26 @@ func setDns(options *option.Options, opt *HiddifyOptions, staticIps *map[string]
 	// 	return err
 	// }
 
+	servers := []option.DNSServerOptions{
+		*static_dns,
+		*remote_dns,
+		*remote_dns_fallback,
+		*trick_dns,
+		*direct_dns,
+		*local_dns,
+		*remote_no_warp_dns,
+	}
+
+	if opt.EnableComssDns {
+		if staticIps != nil {
+			(*staticIps)["dns.comss.one"] = []string{"195.133.25.16", "83.220.169.155", "212.109.195.93"}
+		}
+		comss_dns, err := getDNSServerOptions(DNSComssTag, "https://dns.comss.one:443/dns-query", DNSDirectTag, "")
+		if err == nil {
+			servers = append(servers, *comss_dns)
+		}
+	}
+
 	dnsOptions := option.DNSOptions{
 		RawDNSOptions: option.RawDNSOptions{
 			DNSClientOptions: option.DNSClientOptions{
@@ -111,19 +124,7 @@ func setDns(options *option.Options, opt *HiddifyOptions, staticIps *map[string]
 			},
 			Final: DNSMultiRemoteTag,
 
-			Servers: []option.DNSServerOptions{
-				*static_dns,
-				*comss_dns,
-				*remote_dns,
-				*remote_dns_fallback,
-				*trick_dns,
-				*direct_dns,
-				*local_dns,
-				*remote_no_warp_dns,
-				// *multi_dns_direct,
-				// *multi_dns_remote,
-				// *block_dns,
-			},
+			Servers: servers,
 			Rules: []option.DNSRule{},
 		},
 	}

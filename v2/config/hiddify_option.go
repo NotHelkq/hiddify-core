@@ -31,8 +31,9 @@ type HiddifyOptions struct {
 	Warp          WarpOptions         `json:"warp,omitempty"`
 	Warp2         WarpOptions         `json:"warp2,omitempty"`
 	Mux           MuxOptions          `json:"mux,omitempty" overridable:"true"`
-	TLSTricks     TLSTricks           `json:"tls-tricks,omitempty"`
-	EnableNTP     bool                `json:"enable-ntp,omitempty"`
+	TLSTricks      TLSTricks           `json:"tls-tricks,omitempty"`
+	EnableNTP      bool                `json:"enable-ntp,omitempty"`
+	EnableComssDns bool                `json:"enable-comss-dns,omitempty" overridable:"true"`
 
 	DNSOptions
 	InboundOptions
@@ -47,6 +48,7 @@ type DNSOptions struct {
 	DirectDnsDomainStrategy option.DomainStrategy `json:"direct-dns-domain-strategy,omitempty" overridable:"true"`
 	IndependentDNSCache     bool                  `json:"independent-dns-cache,omitempty"`
 	EnableFakeDNS           bool                  `json:"enable-fake-dns,omitempty"`
+	EnableComssDns          bool                  `json:"enable-comss-dns,omitempty" overridable:"true"`
 	// EnableDNSRouting        bool                  `json:"enable-dns-routing,omitempty"`
 }
 
@@ -155,6 +157,7 @@ func DefaultHiddifyOptions() *HiddifyOptions {
 			DirectDnsDomainStrategy: option.DomainStrategy(dns.DomainStrategyAsIS),
 			IndependentDNSCache:     false,
 			EnableFakeDNS:           false,
+			EnableComssDns:          false,
 			// EnableDNSRouting:        false,
 		},
 		InboundOptions: InboundOptions{

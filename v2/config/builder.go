@@ -992,21 +992,23 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			},
 		})
 	}
-	routeRules = append(routeRules, option.Rule{
-		Type: C.RuleTypeDefault,
-		DefaultOptions: option.DefaultRule{
-			RawDefaultRule: option.RawDefaultRule{
-				Domain: GeminiDomains,
-				IPCIDR: GeminiPoolIPs,
-			},
-			RuleAction: option.RuleAction{
-				Action: C.RuleActionTypeRoute,
-				RouteOptions: option.RouteActionOptions{
-					Outbound: OutboundDirectTag,
+	if hopt.EnableComssDns {
+		routeRules = append(routeRules, option.Rule{
+			Type: C.RuleTypeDefault,
+			DefaultOptions: option.DefaultRule{
+				RawDefaultRule: option.RawDefaultRule{
+					Domain: GeminiDomains,
+					IPCIDR: GeminiPoolIPs,
+				},
+				RuleAction: option.RuleAction{
+					Action: C.RuleActionTypeRoute,
+					RouteOptions: option.RouteActionOptions{
+						Outbound: OutboundDirectTag,
+					},
 				},
 			},
-		},
-	})
+		})
+	}
 	options.Route = &option.RouteOptions{
 		Rules:               routeRules,
 		Final:               OutboundMainDetour,
@@ -1026,23 +1028,25 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 		// },
 	}
 	// if opt.EnableDNSRouting {
-	dnsRules = append(
-		dnsRules,
-		option.DefaultDNSRule{
-			RawDefaultDNSRule: option.RawDefaultDNSRule{
-				Domain: GeminiDomains,
-			},
-			DNSRuleAction: option.DNSRuleAction{
-				Action: C.RuleActionTypeRoute,
-				RouteOptions: option.DNSRouteActionOptions{
-					Server:         DNSComssTag,
-					Strategy:       option.DomainStrategy(C.DomainStrategyPreferIPv4),
-					RewriteTTL:     &DEFAULT_DNS_TTL,
-					BypassIfFailed: false,
+	if hopt.EnableComssDns {
+		dnsRules = append(
+			dnsRules,
+			option.DefaultDNSRule{
+				RawDefaultDNSRule: option.RawDefaultDNSRule{
+					Domain: GeminiDomains,
+				},
+				DNSRuleAction: option.DNSRuleAction{
+					Action: C.RuleActionTypeRoute,
+					RouteOptions: option.DNSRouteActionOptions{
+						Server:         DNSComssTag,
+						Strategy:       option.DomainStrategy(C.DomainStrategyPreferIPv4),
+						RewriteTTL:     &DEFAULT_DNS_TTL,
+						BypassIfFailed: false,
+					},
 				},
 			},
-		},
-	)
+		)
+	}
 	if hopt.EnableFakeDNS {
 		// inbounds := []string{InboundTUNTag}
 		// for _, inp := range options.Inbounds {
