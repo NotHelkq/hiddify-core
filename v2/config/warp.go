@@ -205,13 +205,15 @@ func GenerateWarpSingboxNew(uniqueIdentifier string, noise *hiddify.NoiseOptions
 func patchWarp(base *option.Endpoint, configOpt *HiddifyOptions, final bool, staticIpsDns map[string][]string) error {
 	if base.Type == C.TypeWARP {
 		if opts, ok := base.Options.(*option.WARPEndpointOptions); ok {
-			if configOpt != nil && configOpt.Warp.CleanIP != "" {
+			if configOpt != nil && configOpt.Warp.CleanIP != "" && configOpt.Warp.CleanIP != "auto" && configOpt.Warp.CleanIP != "random" && configOpt.Warp.CleanIP != "default" {
 				opts.ServerOptions.Server = configOpt.Warp.CleanIP
 			} else {
 				opts.ServerOptions.Server = ""
 			}
 			if configOpt != nil && configOpt.Warp.CleanPort != 0 {
 				opts.ServerOptions.ServerPort = configOpt.Warp.CleanPort
+			} else {
+				opts.ServerOptions.ServerPort = 0
 			}
 			if isDirectDetour(OutboundWARPConfigDetour) {
 				opts.Profile.Detour = ""

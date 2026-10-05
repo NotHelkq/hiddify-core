@@ -211,7 +211,13 @@ func setOutbounds(options *option.Options, input *option.Options, opt *HiddifyOp
 		// 	FakePacketsDelay: opt.Warp.FakePacketDelay,
 		// 	FakePacketsMode:  opt.Warp.FakePacketMode,
 		// })
-		out, err := GenerateWarpSingboxNew("p1", &hiddify.NoiseOptions{})
+		noise := &hiddify.NoiseOptions{
+			FakePackets:      opt.Warp.FakePackets,
+			FakePacketsSize:  opt.Warp.FakePacketSize,
+			FakePacketsDelay: opt.Warp.FakePacketDelay,
+			FakePacketsMode:  opt.Warp.FakePacketMode,
+		}
+		out, err := GenerateWarpSingboxNew("p1", noise)
 		if err != nil {
 			return fmt.Errorf("failed to generate warp config: %v", err)
 		}
@@ -997,8 +1003,22 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			Type: C.RuleTypeDefault,
 			DefaultOptions: option.DefaultRule{
 				RawDefaultRule: option.RawDefaultRule{
-					Domain: GeminiDomains,
 					IPCIDR: GeminiPoolIPs,
+				},
+				RuleAction: option.RuleAction{
+					Action: C.RuleActionTypeRoute,
+					RouteOptions: option.RouteActionOptions{
+						Outbound: OutboundDirectTag,
+					},
+				},
+			},
+		})
+		routeRules = append(routeRules, option.Rule{
+			Type: C.RuleTypeDefault,
+			DefaultOptions: option.DefaultRule{
+				RawDefaultRule: option.RawDefaultRule{
+					Domain:       GeminiDomains,
+					DomainSuffix: GeminiDomains,
 				},
 				RuleAction: option.RuleAction{
 					Action: C.RuleActionTypeRoute,
@@ -1033,7 +1053,8 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			dnsRules,
 			option.DefaultDNSRule{
 				RawDefaultDNSRule: option.RawDefaultDNSRule{
-					Domain: GeminiDomains,
+					Domain:       GeminiDomains,
+					DomainSuffix: GeminiDomains,
 				},
 				DNSRuleAction: option.DNSRuleAction{
 					Action: C.RuleActionTypeRoute,
