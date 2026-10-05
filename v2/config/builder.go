@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/hiddify/hiddify-core/v2/hutils"
-	mDNS "github.com/miekg/dns"
 	C "github.com/sagernet/sing-box/constant"
 	sdns "github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/option"
