@@ -81,10 +81,7 @@ func setDns(options *option.Options, opt *HiddifyOptions, staticIps *map[string]
 		(*staticIps)["api.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
 		(*staticIps)["engage.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
 		(*staticIps)["dns.comss.one"] = []string{"195.133.25.16", "83.220.169.155", "212.109.195.93"}
-		geminiStaticIPs := []string{"95.81.98.135", "89.150.59.128"}
-		for _, d := range GeminiDomains {
-			(*staticIps)[d] = geminiStaticIPs
-		}
+
 	}
 	static_dns, err := getStaticDNSServerOptions(DNSStaticTag, staticIps)
 	if err != nil {
@@ -255,21 +252,7 @@ func addForceDirect(options *option.Options, hopt *HiddifyOptions) ([]option.Def
 				},
 			},
 		},
-		option.DefaultDNSRule{
-			RawDefaultDNSRule: option.RawDefaultDNSRule{
-				Domain:       GeminiDomains,
-				DomainSuffix: GeminiDomains,
-			},
-			DNSRuleAction: option.DNSRuleAction{
-				Action: C.RuleActionTypeRoute,
-				RouteOptions: option.DNSRouteActionOptions{
-					Server:         DNSStaticTag,
-					Strategy:       hopt.DirectDnsDomainStrategy,
-					BypassIfFailed: false,
-					RewriteTTL:     &DEFAULT_DNS_TTL,
-				},
-			},
-		},
+
 	)
 
 	for _, url := range hopt.ConnectionTestUrls { //To avoid dns bug when using urltest

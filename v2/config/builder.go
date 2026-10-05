@@ -112,10 +112,7 @@ func BuildConfig(ctx context.Context, hopts *HiddifyOptions, inputOpt *ReadOptio
 	staticIPs["api.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
 	staticIPs["engage.cloudflareclient.com"] = []string{"162.159.192.1", "162.159.193.10"}
 	staticIPs["dns.comss.one"] = []string{"195.133.25.16", "83.220.169.155", "212.109.195.93"}
-	geminiStaticIPs := []string{"95.81.98.135", "89.150.59.128"}
-	for _, d := range GeminiDomains {
-		staticIPs[d] = geminiStaticIPs
-	}
+
 	// setNTP(&options)
 	if err := setOutbounds(&options, input, hopts, &staticIPs); err != nil {
 		return nil, err
@@ -1014,42 +1011,7 @@ func setRoutingOptions(options *option.Options, hopt *HiddifyOptions) error {
 			},
 		})
 	}
-	// 1. Reject QUIC (UDP) for Gemini domains so Chrome and apps fall back to TCP immediately
-	routeRules = append(routeRules, option.Rule{
-		Type: C.RuleTypeDefault,
-		DefaultOptions: option.DefaultRule{
-			RawDefaultRule: option.RawDefaultRule{
-				Domain:       GeminiDomains,
-				DomainSuffix: GeminiDomains,
-				Network:      []string{"udp"},
-			},
-			RuleAction: option.RuleAction{
-				Action: C.RuleActionTypeReject,
-				RejectOptions: option.RejectActionOptions{
-					Method: C.RuleActionRejectMethodDefault,
-				},
-			},
-		},
-	})
-	// 2. Route TCP for Gemini domains to OutboundDirectTag with OverrideAddress to COMSS proxy
-	routeRules = append(routeRules, option.Rule{
-		Type: C.RuleTypeDefault,
-		DefaultOptions: option.DefaultRule{
-			RawDefaultRule: option.RawDefaultRule{
-				Domain:       GeminiDomains,
-				DomainSuffix: GeminiDomains,
-			},
-			RuleAction: option.RuleAction{
-				Action: C.RuleActionTypeRoute,
-				RouteOptions: option.RouteActionOptions{
-					Outbound: OutboundDirectTag,
-					RawRouteOptionsActionOptions: option.RawRouteOptionsActionOptions{
-						OverrideAddress: "95.81.98.135",
-					},
-				},
-			},
-		},
-	})
+
 	// 3. Direct route for COMSS reverse proxy IPs and COMSS DNS servers
 	routeRules = append(routeRules, option.Rule{
 		Type: C.RuleTypeDefault,
