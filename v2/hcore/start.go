@@ -251,7 +251,7 @@ func SwitchOLCRTC(opt *config.OLCRTCOptions) (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to start olcrtc: %w", err)
 	}
-	_ = olcrtc.WaitReady(500)
+	_ = olcrtc.WaitReady(3000)
 	activeRunningOLCRTCOpt = opt
 	config.ActiveOLCRTCOptions = opt
 	return nil

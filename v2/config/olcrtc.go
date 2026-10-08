@@ -172,7 +172,7 @@ func ParseOLCRTCURI(uriStr string) (*OLCRTCOptions, error) {
 		DNSServer:            "77.88.8.8:53",
 		VP8FPS:               120,
 		VP8BatchSize:         64,
-		KeepaliveIntervalSec: 15,
+		KeepaliveIntervalSec: 5,
 		SocksPort:            10808,
 	}
 

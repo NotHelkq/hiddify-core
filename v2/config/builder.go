@@ -305,9 +305,9 @@ func setOutbounds(options *option.Options, input *option.Options, opt *HiddifyOp
 			// URLs:      opt.ConnectionTestUrls,
 			// Interval:  badoption.Duration(opt.URLTestInterval.Duration()),
 			// IdleTimeout: badoption.Duration(opt.URLTestIdleTimeout.Duration()),
-			Tolerance: 1,
+			Tolerance: 50,
 			// IdleTimeout:               badoption.Duration(opt.URLTestInterval.Duration().Nanoseconds() * 3),
-			InterruptExistConnections: true,
+			InterruptExistConnections: false,
 		},
 	}
 
@@ -322,9 +322,9 @@ func setOutbounds(options *option.Options, input *option.Options, opt *HiddifyOp
 			// URLs:      opt.ConnectionTestUrls,
 			// Interval:  badoption.Duration(opt.URLTestInterval.Duration()),
 			// IdleTimeout: badoption.Duration(opt.URLTestIdleTimeout.Duration()),
-			Tolerance: 1,
+			Tolerance: 50,
 			// IdleTimeout:               badoption.Duration(opt.URLTestInterval.Duration().Nanoseconds() * 3),
-			InterruptExistConnections: true,
+			InterruptExistConnections: false,
 		},
 	}
 	defaultSelect := tags[0]
@@ -436,9 +436,9 @@ func setExperimental(options *option.Options, hopt *HiddifyOptions) {
 			Monitoring: &option.MonitoringOptions{
 				URLs:           hopt.ConnectionTestUrls,
 				Interval:       badoption.Duration(hopt.URLTestInterval.Duration()),
-				DebounceWindow: badoption.Duration(time.Millisecond * 100),
+				DebounceWindow: badoption.Duration(time.Millisecond * 500),
 				IdleTimeout:    badoption.Duration(hopt.URLTestInterval.Duration().Nanoseconds() * 3),
-				URLTestTimeout: badoption.Duration(5 * time.Second),
+				URLTestTimeout: badoption.Duration(10 * time.Second),
 			},
 		}
 	}
