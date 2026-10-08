@@ -11,7 +11,53 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/google/uuid"
 )
+
+var (
+	localDeviceID   string
+	localDeviceIDMu sync.Mutex
+)
+
+func GetDeviceID() string {
+	localDeviceIDMu.Lock()
+	defer localDeviceIDMu.Unlock()
+	if localDeviceID != "" {
+		return localDeviceID
+	}
+
+	candidates := []string{
+		"olcrtc_device_id",
+		filepath.Join(os.TempDir(), "hiddify_device_id"),
+	}
+	for _, path := range candidates {
+		if data, err := os.ReadFile(path); err == nil {
+			id := strings.TrimSpace(string(data))
+			if _, err := uuid.Parse(id); err == nil {
+				localDeviceID = id
+				return localDeviceID
+			}
+		}
+	}
+
+	newID := uuid.New().String()
+	for _, path := range candidates {
+		if err := os.WriteFile(path, []byte(newID), 0644); err == nil {
+			break
+		}
+	}
+	localDeviceID = newID
+	return localDeviceID
+}
+
+func ResolveOLCRTCClientID(baseClientID string) string {
+	devID := GetDeviceID()
+	if baseClientID == "" {
+		return devID
+	}
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(baseClientID+"@"+devID)).String()
+}
 
 type OLCRTCOptions struct {
 	Type                 string `json:"type"`
@@ -211,6 +257,7 @@ func ParseOLCRTCURI(uriStr string) (*OLCRTCOptions, error) {
 	if opts.ClientID == "" {
 		opts.ClientID = q.Get("c")
 	}
+	opts.ClientID = ResolveOLCRTCClientID(opts.ClientID)
 
 	opts.Transport = q.Get("transport")
 	if opts.Transport == "" {

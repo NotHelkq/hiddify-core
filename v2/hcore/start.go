@@ -246,7 +246,8 @@ func SwitchOLCRTC(opt *config.OLCRTCOptions) (err error) {
 	if socksPort <= 0 {
 		socksPort = 10808
 	}
-	Log(LogLevel_INFO, LogType_CORE, fmt.Sprintf("Starting olcRTC: carrier=%s, transport=%s, room=%s, port=%d", opt.Provider, opt.Transport, opt.RoomID, socksPort))
+	opt.ClientID = config.ResolveOLCRTCClientID(opt.ClientID)
+	Log(LogLevel_INFO, LogType_CORE, fmt.Sprintf("Starting olcRTC: carrier=%s, transport=%s, room=%s, port=%d, clientID=%s", opt.Provider, opt.Transport, opt.RoomID, socksPort, opt.ClientID))
 	err = olcrtc.StartWithTransport(opt.Provider, opt.Transport, opt.RoomID, opt.ClientID, opt.KeyHex, socksPort, "", "")
 	if err != nil {
 		return fmt.Errorf("failed to start olcrtc: %w", err)
