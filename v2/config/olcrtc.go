@@ -310,7 +310,7 @@ func ParseOLCRTCURI(uriStr string) (*OLCRTCOptions, error) {
 			frag = unescaped
 		}
 	}
-	cleanFrag := strings.TrimLeft(frag, "# ")
+	cleanFrag := strings.TrimSpace(frag)
 	if cleanFrag != "" {
 		opts.Name = cleanFrag
 	} else {

@@ -2,6 +2,7 @@ package hcore
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	hcommon "github.com/hiddify/hiddify-core/v2/hcommon"
@@ -23,12 +24,21 @@ func (s *CoreService) Close(ctx context.Context, closeReq *CloseRequest) (*hcomm
 }
 
 func Pause() {
+	defer func() {
+		if r := recover(); r != nil {
+			Log(LogLevel_ERROR, LogType_CORE, fmt.Sprintf("Pause recovered panic: %v", r))
+		}
+	}()
 	if box := static.Instance(); box != nil {
 		if manager := box.PauseManager(); manager != nil {
-			manager.DevicePause()
+			if !manager.IsDevicePaused() {
+				manager.DevicePause()
+			}
 			if C.IsIos {
 				if static.endPauseTimer == nil {
-					static.endPauseTimer = time.AfterFunc(time.Minute, manager.DeviceWake)
+					static.endPauseTimer = time.AfterFunc(time.Minute, func() {
+						Wake()
+					})
 				} else {
 					static.endPauseTimer.Reset(time.Minute)
 				}
@@ -38,12 +48,16 @@ func Pause() {
 }
 
 func Wake() {
+	defer func() {
+		if r := recover(); r != nil {
+			Log(LogLevel_ERROR, LogType_CORE, fmt.Sprintf("Wake recovered panic: %v", r))
+		}
+	}()
 	if box := static.Instance(); box != nil {
 		if manager := box.PauseManager(); manager != nil {
-			// if !C.IsIos {
-			manager.DeviceWake()
-			// }
+			if manager.IsDevicePaused() {
+				manager.DeviceWake()
+			}
 		}
 	}
-
 }
